@@ -6,6 +6,8 @@ import { loadConfig } from './config.js';
 import { createCache } from './data/cache.js';
 import { createAramkitClient } from './data/aramkit/client.js';
 import { createAramkitAdapter } from './data/aramkit/adapter.js';
+import { createAramggClient } from './data/aramgg/client.js';
+import { createAramggAdapter } from './data/aramgg/adapter.js';
 import { createRepository } from './data/repository.js';
 import { createChampionIndex } from './data/champions.js';
 import { createAppState } from './server/state.js';
@@ -23,7 +25,6 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
   const cfg = loadConfig({ env, argv });
   const cache = createCache({ dir: cfg.cacheDir, ttlMs: cfg.cacheTtlMs });
   const aramkit = createAramkitAdapter({ client: createAramkitClient(), cache });
-  const repository = createRepository({ primary: aramkit, fallback: null, cache });
 
   let champIndex;
   try {
@@ -33,6 +34,11 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
     champIndex = createChampionIndex({});
     log(`WARN champion index unavailable: ${e.message}`);
   }
+
+  const aramgg = createAramggAdapter({ client: createAramggClient({ apiKey: cfg.aramggApiKey }), cache, apiKey: cfg.aramggApiKey, champIndex });
+  const [primary, fallback] = cfg.primarySource === 'aramgg' ? [aramgg, aramkit] : [aramkit, aramgg];
+  const repository = createRepository({ primary, fallback, cache });
+  log(`data: primary=${primary.name} fallback=${fallback.enabled ? fallback.name : 'disabled'}`);
 
   const state = createAppState({ repository, log });
   if (champIndex.size === 0) state.pushError('startup', 'champion index unavailable; search and detection disabled until aramkit is reachable');

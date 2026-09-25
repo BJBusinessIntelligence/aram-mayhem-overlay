@@ -1,0 +1,24 @@
+{
+  "_note": "HAND-WRITTEN from docs/aramgg-api-docs.md prose. Field names unverified. Replace with a real capture once an API key exists.",
+  "meta": { "service": "aramgg-data-api", "schemaVersion": 1, "apiVersion": "v1", "locale": "en", "gamePatch": "16.18", "apiRelease": 3, "dataVersion": "16.18.3", "generatedAt": "2026-09-21T09:31:09.379Z", "publishedAt": null, "resource": "champions/157" },
+  "data": {
+    "id": 157, "name": "Yasuo", "tier": "S", "iconUrl": "https://cdn.dtodo.cn/hextech/champion/157.png",
+    "stats": { "rank": 1, "winRate": 0.571, "pickRate": 0.1, "games": 12345 },
+    "augments": [
+      { "id": 1058, "name": "Mystic Punch", "rarity": "Prismatic", "iconUrl": "https://cdn.dtodo.cn/hextech/augment/1058.png", "stats": { "rank": 1, "total": 120, "winRate": 0.64, "wins": 640, "games": 1000, "pickRate": 0.14 } },
+      { "id": 2009, "name": "Zealot", "rarity": "Gold", "iconUrl": null, "stats": { "rank": 2, "total": 120, "winRate": null, "wins": null, "games": null, "pickRate": 0.01 } },
+      { "id": 1077, "name": "Some Silver", "rarity": "silver", "iconUrl": null, "stats": { "rank": 3, "total": 120, "winRate": 0.5, "wins": 50, "games": 100, "pickRate": 0.02 } }
+    ],
+    "builds": [
+      {
+        "label": "Crit", "games": 5000, "wins": 3000, "pickRate": 0.6, "winRate": 0.6,
+        "coreItems": [ { "id": 3032, "name": "Yun Tal Wildarrows", "iconUrl": null }, { "id": 123430, "name": "Rite of Ruin", "iconUrl": null }, { "id": 6333, "name": "Death's Dance", "iconUrl": null } ],
+        "startingItems": [ { "id": 1038, "name": "B. F. Sword", "iconUrl": null } ],
+        "situationalItems": [ { "id": 3031, "name": "Infinity Edge", "iconUrl": null, "pickRate": 0.3, "winRate": 0.62, "games": 900 } ],
+        "summonerSpells": [ { "summonerSpellIds": [4, 32], "spells": [ { "id": 4, "name": "Flash", "iconUrl": "" }, { "id": 32, "name": "Mark", "iconUrl": "" } ], "games": 4000, "wins": 2400, "pickRate": 0.9, "winRate": 0.6 } ],
+        "skillOrders": [ { "skillOrder": [3, 1, 2, 1, 1, 4], "skillKeys": ["E", "Q", "W"], "games": 1000, "wins": 600, "pickRate": 0.2, "winRate": 0.6 } ]
+      },
+      { "label": "Bruiser", "games": 800, "wins": 440, "pickRate": 0.1, "winRate": 0.55, "coreItems": [ { "id": 123430, "name": "Rite of Ruin", "iconUrl": null } ], "startingItems": [], "situationalItems": [], "summonerSpells": [], "skillOrders": [] }
+    ]
+  }
+}
