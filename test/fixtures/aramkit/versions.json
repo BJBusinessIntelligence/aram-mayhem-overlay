@@ -1,0 +1,23 @@
+{
+  "latest": "16.19",
+  "versions": [
+    {
+      "version": "16.19",
+      "dataPath": "data/16.19-20260924-6f95ad08cfe5",
+      "resourcePath": "resources/16.19-0971924da1f4",
+      "dataDate": "2026-09-24",
+      "buildTimeUnixMs": 1790277044543,
+      "allMatches": 7426039,
+      "highMatches": 1856509
+    },
+    {
+      "version": "16.18",
+      "dataPath": "data/16.18-20260922-56142ebda624",
+      "resourcePath": "resources/16.18-bd7661dbee24",
+      "dataDate": "2026-09-22",
+      "buildTimeUnixMs": 1790317963570,
+      "allMatches": 46883138,
+      "highMatches": 11720784
+    }
+  ]
+}
