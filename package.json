@@ -1,0 +1,12 @@
+{
+  "name": "aram-mayhem-overlay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local ARAM Mayhem augment + build overlay page for League of Legends",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}
