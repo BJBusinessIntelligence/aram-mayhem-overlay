@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ARAM Mayhem Overlay</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header id="header">
+    <div class="row">
+      <img id="champ-icon" alt="" hidden>
+      <div id="champ-title">Waiting for League…</div>
+      <div id="game-info"></div>
+      <div class="spacer"></div>
+      <div class="search">
+        <input id="search" type="search" placeholder="Search champion…" autocomplete="off">
+        <ul id="search-results" hidden></ul>
+      </div>
+      <button id="live-btn" hidden title="Back to detected champion">Live</button>
+      <button id="refresh-btn" title="Re-fetch data">↻</button>
+    </div>
+    <div class="row controls">
+      <span>Stage:</span>
+      <div class="tabs" id="stage-tabs">
+        <button data-stage="auto">Auto</button>
+        <button data-stage="all">All</button>
+        <button data-stage="1">1</button>
+        <button data-stage="2">2</button>
+        <button data-stage="3">3</button>
+        <button data-stage="4">4</button>
+      </div>
+      <span>Bracket:</span>
+      <div class="tabs" id="bracket-tabs">
+        <button data-bracket="all">All</button>
+        <button data-bracket="high">High MMR</button>
+      </div>
+      <div class="spacer"></div>
+      <div id="meta"></div>
+    </div>
+    <div id="banner" hidden></div>
+  </header>
+  <main id="main">
+    <section class="col" id="col-prismatic"><h2 class="prismatic">Prismatic</h2><div class="rows"></div></section>
+    <section class="col" id="col-gold"><h2 class="gold">Gold</h2><div class="rows"></div></section>
+    <section class="col" id="col-silver"><h2 class="silver">Silver</h2><div class="rows"></div></section>
+    <section class="col build" id="col-build"><h2>Build</h2><div id="build"></div></section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
