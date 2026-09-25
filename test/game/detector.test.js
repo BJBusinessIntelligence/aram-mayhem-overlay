@@ -11,13 +11,14 @@ const OFF = { connected: false };
 const reduce = (prev, snaps) => reduceGameState(prev, snaps, index, now);
 
 test('nothing connected → none, previous champion retained, level cleared', () => {
-  const prev = { ...EMPTY_GAME, phase: 'ingame', championId: 157, riotId: 'Yasuo', level: 9, stage: 2, queueId: 2400 };
+  const prev = { ...EMPTY_GAME, phase: 'ingame', championId: 157, riotId: 'Yasuo', level: 9, stage: 2, queueId: 2400, gameMode: 'ARAM' };
   const s = reduce(prev, { lcu: OFF, live: OFF });
   assert.equal(s.phase, 'none');
   assert.equal(s.championId, 157);
   assert.equal(s.level, null);
   assert.equal(s.stage, null);
   assert.equal(s.queueId, null);
+  assert.equal(s.gameMode, null);
   assert.equal(s.lcuConnected, false);
   assert.equal(s.updatedAt, 99);
 });

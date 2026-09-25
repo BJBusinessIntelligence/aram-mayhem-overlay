@@ -35,6 +35,8 @@ test('static files', async () => {
   assert.match((await get('/')).type, /text\/html/);
   assert.match((await get('/app.js')).type, /javascript/);
   assert.match((await get('/style.css')).type, /text\/css/);
+  // fetch normalizes '..' out of the path before it leaves the client, so this does not actually
+  // exercise traversal; the whitelist in createServer makes traversal moot regardless.
   assert.equal((await get('/../package.json')).status, 404);
 });
 

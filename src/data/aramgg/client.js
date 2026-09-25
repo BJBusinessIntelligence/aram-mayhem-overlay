@@ -1,6 +1,7 @@
 import { HttpError } from '../model.js';
 
 export const ARAMGG_BASE = 'https://data.dtodo.cn/api/v1/en';
+const FETCH_TIMEOUT_MS = 8000;
 
 export function createAramggClient({ fetch = globalThis.fetch, apiKey = null, now = Date.now, cooldownMs = 60 * 60 * 1000, base = ARAMGG_BASE } = {}) {
   let cooldownUntil = 0;
@@ -10,7 +11,7 @@ export function createAramggClient({ fetch = globalThis.fetch, apiKey = null, no
     if (auth && now() < cooldownUntil) throw new Error(`aramgg: cooling down after 429 until ${new Date(cooldownUntil).toISOString()}`);
     const headers = { accept: 'application/json' };
     if (auth) headers['x-api-key'] = apiKey;
-    const res = await fetch(`${base}${p}`, { headers });
+    const res = await fetch(`${base}${p}`, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (res.status === 429) { cooldownUntil = now() + cooldownMs; throw new HttpError(429, p); }
     if (res.status !== 200) throw new HttpError(res.status, p);
     return res.json();

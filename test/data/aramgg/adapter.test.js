@@ -45,7 +45,9 @@ test('version from config; champion normalized with resources and champ index na
   assert.equal(client.calls.augments, 1);
   await a.champion(157, 'all');
   assert.equal(client.calls.augments, 1, 'resources cached');
-  const b = createAramggAdapter({ client: fakeClient(), cache: createCache({ dir: 'c', ttlMs: 1000, fs, now: () => 5 }), apiKey: 'k', champIndex: index });
+  const c2 = fakeClient();
+  const b = createAramggAdapter({ client: c2, cache: createCache({ dir: 'c', ttlMs: 1000, fs, now: () => 5 }), apiKey: 'k', champIndex: index });
   await b.champion(157, 'all');
-  assert.equal(client.calls.augments, 1, 'second adapter reads disk cache');
+  assert.equal(c2.calls.augments, 0, 'second adapter reads disk cache');
+  assert.equal(c2.calls.items, 0, 'second adapter reads disk cache');
 });

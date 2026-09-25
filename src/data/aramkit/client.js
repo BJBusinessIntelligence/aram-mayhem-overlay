@@ -2,7 +2,7 @@ import { HttpError } from '../model.js';
 
 export const ARAMKIT_BASE = 'https://data.aramkit.com';
 export const VERSIONS_URL = `${ARAMKIT_BASE}/data/versions.json`;
-export const RESOURCE_NAMES = Object.freeze(['champions', 'augments', 'items', 'summoner-spells', 'archetypes']);
+const FETCH_TIMEOUT_MS = 8000;
 
 export function aramkitUrls(entry) {
   if (!entry || !entry.dataPath || !entry.resourcePath) throw new Error('aramkit version entry missing dataPath/resourcePath');
@@ -36,7 +36,7 @@ export function createAramkitClient({
       const wait = lastAt + minIntervalMs - now();
       if (wait > 0) await sleep(wait);
       lastAt = now();
-      const res = await fetch(url, { headers: { 'user-agent': userAgent, accept: 'application/json' } });
+      const res = await fetch(url, { headers: { 'user-agent': userAgent, accept: 'application/json' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
       if (res.status !== 200) throw new HttpError(res.status, url);
       return res.json();
     });

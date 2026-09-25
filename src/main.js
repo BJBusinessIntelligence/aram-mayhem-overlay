@@ -49,7 +49,7 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
     lcu, live, champIndex, pollMs: cfg.pollMs,
     onChange: (g) => {
       log(`game: ${g.phase} champ=${g.riotId ?? '-'} lvl=${g.level ?? '-'} queue=${g.queueId ?? '-'}${g.error ? ` error=${g.error}` : ''}`);
-      return state.setGame(g);
+      void state.setGame(g); // fire-and-forget: a slow fetch must not block the poll loop; load() swallows its own errors
     },
   });
   detector.start();
@@ -63,5 +63,7 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main().catch((e) => { console.error(e); process.exit(1); });
+  main()
+    .then((app) => { process.on('SIGINT', () => { app.stop(); process.exit(0); }); })
+    .catch((e) => { console.error(e); process.exit(1); });
 }

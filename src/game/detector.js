@@ -22,7 +22,7 @@ export function reduceGameState(prev, { lcu, live }, champIndex, now = Date.now)
     next.level = null; next.stage = null;
   } else {
     next.phase = 'none';
-    next.level = null; next.stage = null;
+    next.level = null; next.stage = null; next.gameMode = null;
   }
 
   if (lcu?.connected && lcu.queueId != null) next.queueId = lcu.queueId;

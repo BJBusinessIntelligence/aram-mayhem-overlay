@@ -65,7 +65,7 @@ function render(p, state) {
   for (const b of document.querySelectorAll('#bracket-tabs button')) b.classList.toggle('active', view.bracket === b.dataset.bracket);
 
   const m = p.meta;
-  $('#meta').textContent = m ? `${m.source} ${m.version} · data ${m.dataDate ?? '?'} · fetched ${ago(m.fetchedAt)}${m.stale ? ' · STALE' : ''}${p.loading ? ' · loading…' : ''}` : (p.loading ? 'loading…' : '');
+  $('#meta').textContent = m ? `${m.source} ${m.version} · bracket ${m.bracket} · data ${m.dataDate ?? '?'} · fetched ${ago(m.fetchedAt)}${m.stale ? ' · STALE' : ''}${p.loading ? ' · loading…' : ''}` : (p.loading ? 'loading…' : '');
 
   const err = p.errors?.[0];
   if (m && m.stale) setBanner(`Showing stale data: ${err ? err.message : 'sources unreachable'}`, 'warn');
@@ -114,8 +114,8 @@ async function setView(patch) {
   lastRendered = '';
   tick();
 }
-$('#stage-tabs').addEventListener('click', (e) => { const s = e.target.dataset?.stage; if (s) setView({ stage: s }); });
-$('#bracket-tabs').addEventListener('click', (e) => { const b = e.target.dataset?.bracket; if (b) setView({ bracket: b }); });
+$('#stage-tabs').addEventListener('click', (e) => { const s = e.target.dataset?.stage; if (s) setView({ stage: s }).catch((e2) => setBanner(e2.message)); });
+$('#bracket-tabs').addEventListener('click', (e) => { const b = e.target.dataset?.bracket; if (b) setView({ bracket: b }).catch((e2) => setBanner(e2.message)); });
 $('#refresh-btn').addEventListener('click', async () => {
   try {
     if (preview) await api(`/api/champ/${preview.id}?force=1&stage=${preview.stage}&bracket=${preview.bracket}`);
@@ -132,9 +132,11 @@ $('#search').addEventListener('input', (e) => {
   const list = $('#search-results');
   if (!q) { list.hidden = true; return; }
   searchTimer = setTimeout(async () => {
-    const results = await api(`/api/champions?q=${encodeURIComponent(q)}`);
-    list.innerHTML = results.map((c) => `<li data-id="${c.id}">${esc(c.name)}</li>`).join('');
-    list.hidden = results.length === 0;
+    try {
+      const results = await api(`/api/champions?q=${encodeURIComponent(q)}`);
+      list.innerHTML = results.map((c) => `<li data-id="${c.id}">${esc(c.name)}</li>`).join('');
+      list.hidden = results.length === 0;
+    } catch (e) { setBanner(e.message); }
   }, 200);
 });
 $('#search-results').addEventListener('click', (e) => {

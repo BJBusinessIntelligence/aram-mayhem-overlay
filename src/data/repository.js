@@ -26,17 +26,19 @@ export function createRepository({ primary, fallback = null, cache }) {
       const cached = force ? null : await cache.get(key);
 
       let version = null;
+      // A source whose version endpoint is down is skipped entirely for this attempt (deliberate
+      // simplification); a still-fresh stale cache entry below can still serve the response.
       try { version = await adapter.version(); }
       catch (e) { errors.push(tagged(adapter, e)); }
 
       if (cached && cached.fresh && version && cached.value.sourceVersion === version) {
-        return { data: cached.value, stale: false, source: adapter.name };
+        return { data: cached.value, stale: false, source: adapter.name, errors };
       }
       if (version) {
         try {
           const data = await dedupe(key.join('/'), () => adapter.champion(id, b));
           await cache.set(key, data);
-          return { data, stale: false, source: adapter.name };
+          return { data, stale: false, source: adapter.name, errors };
         } catch (e) { errors.push(tagged(adapter, e)); }
       }
       if (cached) stale.push({ data: cached.value, stale: true, source: adapter.name });
