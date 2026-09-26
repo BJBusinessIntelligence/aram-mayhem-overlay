@@ -58,15 +58,23 @@ Requirements: League in **Borderless** (or Windowed) mode; English client. Nothi
 or sent to the game — capture only.
 
 Options: `OCR_ENABLED=false` / `--ocr=false` turns it off; `OCR_IDLE_MS`, `OCR_ACTIVE_MS`,
-`OCR_REGION=band|full`, `--ocr-debug` (saves frames that produced an offer to `data/debug/`).
+`OCR_REGION=band|full`, `--ocr-debug` (dumps every in-game tick's OCR result, plus every
+published offer, to `data/debug/`; see below).
 Runtime toggle: `POST /api/ocr {"enabled":false}`.
 
-Calibration / troubleshooting: `node scripts/ocr-capture.js --full --save data/debug/f.png`
-prints every line the OCR sees with coordinates. During an augment screen, run
-`curl -X POST localhost:3777/api/ocr/capture -d "{\"save\":true}"` to store the frame and
-its match result under `data/debug/` — attach these when reporting a missed offer. This works
-whether or not `--ocr-debug` is set; `--ocr-debug` only controls the *automatic* dump of every
-published offer, not this manual, on-demand capture.
+Calibration / troubleshooting: capture a frame + OCR result under `data/debug/` for tuning,
+via any of:
+
+- the page's **📷 Capture** button (top right, next to refresh) — one click, no terminal.
+- `curl.exe -X POST "localhost:3777/api/ocr/capture?save=1"` — PowerShell-safe, no request
+  body needed.
+- `node scripts/ocr-capture.js --full --save data/debug/f.png --json data/debug/f.json` —
+  prints every line the OCR sees with coordinates.
+
+These work whether or not `--ocr-debug` is set, and attach the saved files when reporting a
+missed offer. Separately, run one full game with `node src/main.js --ocr-debug` and send
+`data/debug/` for tuning: it writes every in-game tick's OCR result as `tick-<ts>.json`
+(capped at the newest 100 files) plus one `offer-<ts>.json` per published offer.
 
 ## Manual smoke checklist
 
