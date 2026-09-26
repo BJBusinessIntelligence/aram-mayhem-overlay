@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createOfferWatcher } from '../../src/ocr/watcher.js';
+import { createOfferWatcher, createAugmentIndexMemo } from '../../src/ocr/watcher.js';
 
 const FRAME = { w: 3440, h: 1440 };
 const rows = [
@@ -118,4 +118,26 @@ test('phase leaving ingame clears a published offer on the next tick', async () 
   st.game = { phase: 'none', level: null, championId: 157 };
   await w.tick();
   assert.equal(st.offers.at(-1), null);
+});
+
+test('augment index memo: a fresh empty extra array each call reuses the same index', () => {
+  const memo = createAugmentIndexMemo();
+  const a = memo(champData, []);
+  const b = memo(champData, []);
+  assert.equal(a, b);
+});
+
+test('augment index memo: different champData rebuilds the index', () => {
+  const memo = createAugmentIndexMemo();
+  const other = { champion: { id: 1 }, augments: { all: [], stages: { 1: [], 2: [], 3: [], 4: [] } } };
+  const a = memo(champData, []);
+  const b = memo(other, []);
+  assert.notEqual(a, b);
+});
+
+test('augment index memo: an extra list of different length rebuilds the index', () => {
+  const memo = createAugmentIndexMemo();
+  const a = memo(champData, []);
+  const b = memo(champData, [{ id: 99, name: 'Extra Augment', rarity: 'gold' }]);
+  assert.notEqual(a, b);
 });

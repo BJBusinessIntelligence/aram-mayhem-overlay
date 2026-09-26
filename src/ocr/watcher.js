@@ -1,6 +1,25 @@
 import { matchOffer, buildAugmentIndex } from './match.js';
 import { advise } from './advice.js';
 
+// Memoizes the built augment index, keyed on champData identity and the extra-augments list's
+// length (not its array identity): a fresh `[]` returned every tick by a default
+// `getExtraAugments` would otherwise defeat a reference-identity cache and force a full
+// buildAugmentIndex (with a normalizeText pass per entry) on every 500-1500ms tick.
+export function createAugmentIndexMemo() {
+  let cache = { champData: undefined, extraLen: undefined, index: [] };
+
+  return function memo(champData, extra) {
+    const extraLen = extra ? extra.length : 0;
+    if (cache.champData === champData && cache.extraLen === extraLen) return cache.index;
+    const entries = [
+      ...((champData && champData.augments && champData.augments.all) || []).map((r) => ({ id: r.id, name: r.name, rarity: r.rarity })),
+      ...(extra || []),
+    ];
+    cache = { champData, extraLen, index: buildAugmentIndex(entries) };
+    return cache.index;
+  };
+}
+
 export function createOfferWatcher({
   worker, state, getExtraAugments = () => [], now = Date.now,
   setTimer = setTimeout, clearTimer = clearTimeout,
@@ -16,17 +35,10 @@ export function createOfferWatcher({
   let noMatch = 0;
   let publishedKey = null;
   let lastErrorMessage = null;
-  let indexCache = { data: undefined, extra: undefined, index: [] };
+  const augmentIndexMemo = createAugmentIndexMemo();
 
   function indexFor(champData) {
-    const extra = getExtraAugments();
-    if (indexCache.data === champData && indexCache.extra === extra) return indexCache.index;
-    const entries = [
-      ...((champData && champData.augments && champData.augments.all) || []).map((r) => ({ id: r.id, name: r.name, rarity: r.rarity })),
-      ...(extra || []),
-    ];
-    indexCache = { data: champData, extra, index: buildAugmentIndex(entries) };
-    return indexCache.index;
+    return augmentIndexMemo(champData, getExtraAugments());
   }
 
   function status(patch = {}) {
