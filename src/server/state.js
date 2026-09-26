@@ -2,7 +2,9 @@ import { EMPTY_GAME } from '../data/model.js';
 import { shapeAugments } from '../rank/augments.js';
 import { pickBuild } from '../rank/builds.js';
 
-export function buildPayload({ game, loading, champData, view, source, stale, errors }) {
+export const EMPTY_OCR = Object.freeze({ enabled: false, running: false, lastCaptureMs: null, lastCaptureAt: null, lastError: null });
+
+export function buildPayload({ game, loading, champData, view, source, stale, errors, offer = null, ocr = EMPTY_OCR }) {
   const augments = champData ? shapeAugments(champData, { stage: view.stage, level: game.level }) : null;
   return {
     game,
@@ -15,6 +17,8 @@ export function buildPayload({ game, loading, champData, view, source, stale, er
       ? { source, version: champData.sourceVersion, dataDate: champData.dataDate, fetchedAt: champData.fetchedAt, bracket: champData.bracket, stale: !!stale }
       : null,
     errors,
+    offer,
+    ocr,
   };
 }
 
@@ -25,6 +29,8 @@ export function createAppState({ repository, now = Date.now, maxErrors = 10, log
   let loading = false;
   let loadSeq = 0;
   const errors = [];
+  let offer = null;
+  let ocr = { ...EMPTY_OCR };
 
   function pushError(scope, message) {
     errors.unshift({ scope, message, at: now() });
@@ -61,6 +67,7 @@ export function createAppState({ repository, now = Date.now, maxErrors = 10, log
     setGame(next) {
       const prevError = game.error;
       game = { ...next };
+      if (game.phase !== 'ingame') offer = null;
       if (next.error && next.error !== prevError) pushError('game', next.error);
       return ensureLoaded();
     },
@@ -79,11 +86,17 @@ export function createAppState({ repository, now = Date.now, maxErrors = 10, log
         source: matches ? current.source : null,
         stale: matches ? current.stale : false,
         errors: errors.slice(),
+        offer,
+        ocr: { ...ocr },
       });
     },
     async preview(id, { bracket = 'all', stage = 'auto', force = false } = {}) {
       const r = await repository.getChamp(id, bracket, { force });
       return buildPayload({ game, loading: false, champData: r.data, view: { stage, bracket }, source: r.source, stale: r.stale, errors: (r.errors ?? []).map((e) => ({ scope: 'data', message: e.message, at: now() })) });
     },
+    getChampData: () => (current && current.id === game.championId ? current.data : null),
+    getOffer: () => offer,
+    setOffer(next) { offer = next ?? null; },
+    setOcrStatus(patch = {}) { ocr = { ...ocr, ...patch }; },
   };
 }

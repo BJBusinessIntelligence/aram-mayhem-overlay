@@ -8,6 +8,10 @@ export const DEFAULTS = Object.freeze({
   lockfilePath: 'C:\\Riot Games\\League of Legends\\lockfile',
   primarySource: 'aramkit',
   open: false,
+  ocrIdleMs: 1500,
+  ocrActiveMs: 500,
+  ocrRegion: 'band',
+  ocrDebug: false,
 });
 
 // --key=value | --key value | --key   (bare flag → 'true')
@@ -31,7 +35,7 @@ function positiveInt(value, name) {
   return n;
 }
 
-export function loadConfig({ env = {}, argv = [] } = {}) {
+export function loadConfig({ env = {}, argv = [], platform = process.platform } = {}) {
   const args = parseArgs(argv);
   const pick = (argKey, envKey) => (args[argKey] !== undefined ? args[argKey] : env[envKey]);
   const c = { ...DEFAULTS };
@@ -52,5 +56,22 @@ export function loadConfig({ env = {}, argv = [] } = {}) {
     c.primarySource = src;
   }
   if (args.open === 'true') c.open = true;
+
+  const bool = (v) => !['0', 'false', 'no', 'off'].includes(String(v).toLowerCase());
+  c.ocrEnabled = platform === 'win32';
+  const ocr = pick('ocr', 'OCR_ENABLED');
+  if (ocr !== undefined) c.ocrEnabled = bool(ocr);
+  const idle = pick('ocr-idle-ms', 'OCR_IDLE_MS');
+  if (idle !== undefined) c.ocrIdleMs = positiveInt(idle, 'ocr-idle-ms');
+  const active = pick('ocr-active-ms', 'OCR_ACTIVE_MS');
+  if (active !== undefined) c.ocrActiveMs = positiveInt(active, 'ocr-active-ms');
+  const region = pick('ocr-region', 'OCR_REGION');
+  if (region !== undefined) {
+    if (!['band', 'full'].includes(region)) throw new Error(`Invalid ocr region: ${region}`);
+    c.ocrRegion = region;
+  }
+  const debug = pick('ocr-debug', 'OCR_DEBUG');
+  if (debug !== undefined) c.ocrDebug = bool(debug);
+
   return c;
 }

@@ -40,3 +40,26 @@ test('invalid numbers and sources throw', () => {
   assert.throws(() => loadConfig({ env: { PRIMARY_SOURCE: 'opgg' }, argv: [] }), /Invalid primary source/);
   assert.throws(() => loadConfig({ env: { PRIMARY_SOURCE: 'aramgg' }, argv: [] }), /Invalid primary source/);
 });
+
+test('ocr defaults depend on platform', () => {
+  assert.equal(loadConfig({ env: {}, argv: [], platform: 'win32' }).ocrEnabled, true);
+  assert.equal(loadConfig({ env: {}, argv: [], platform: 'linux' }).ocrEnabled, false);
+  const c = loadConfig({ env: {}, argv: [], platform: 'win32' });
+  assert.equal(c.ocrIdleMs, 1500);
+  assert.equal(c.ocrActiveMs, 500);
+  assert.equal(c.ocrRegion, 'band');
+  assert.equal(c.ocrDebug, false);
+});
+
+test('ocr overrides from env and argv', () => {
+  const c = loadConfig({ env: { OCR_ENABLED: 'false', OCR_IDLE_MS: '2000', OCR_ACTIVE_MS: '250', OCR_REGION: 'full', OCR_DEBUG: '1' }, argv: [], platform: 'win32' });
+  assert.equal(c.ocrEnabled, false);
+  assert.equal(c.ocrIdleMs, 2000);
+  assert.equal(c.ocrActiveMs, 250);
+  assert.equal(c.ocrRegion, 'full');
+  assert.equal(c.ocrDebug, true);
+  const d = loadConfig({ env: { OCR_ENABLED: '0' }, argv: ['--ocr=true', '--ocr-debug'], platform: 'linux' });
+  assert.equal(d.ocrEnabled, true);
+  assert.equal(d.ocrDebug, true);
+  assert.throws(() => loadConfig({ env: { OCR_REGION: 'left' }, argv: [], platform: 'win32' }), /Invalid ocr region/);
+});

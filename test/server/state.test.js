@@ -114,3 +114,38 @@ test('preview returns a payload for any champion without touching game state', a
   assert.equal(p.view.stageUsed, 'all');
   assert.equal(s.snapshot().champ, null);
 });
+
+test('payload carries offer and ocr with safe defaults', () => {
+  const p = buildPayload({ game: EMPTY_GAME, loading: false, champData: null, view: { stage: 'auto', bracket: 'all' }, source: null, stale: false, errors: [] });
+  assert.equal(p.offer, null);
+  assert.deepEqual(p.ocr, { enabled: false, running: false, lastCaptureMs: null, lastCaptureAt: null, lastError: null });
+});
+
+test('setOffer shows in snapshot and clears when the phase leaves ingame', async () => {
+  const s = createAppState({ repository: fakeRepo() });
+  await s.setGame(game({ phase: 'ingame', championId: 157, level: 7 }));
+  const offer = { detectedAt: 1, cards: [], pickSlot: null, note: null };
+  s.setOffer(offer);
+  assert.equal(s.snapshot().offer, offer);
+  assert.equal(s.getOffer(), offer);
+  await s.setGame(game({ phase: 'ingame', championId: 157, level: 8 }));
+  assert.equal(s.snapshot().offer, offer, 'level change keeps the offer');
+  await s.setGame(game({ phase: 'none', championId: 157 }));
+  assert.equal(s.snapshot().offer, null);
+});
+
+test('setOcrStatus merges partial updates', () => {
+  const s = createAppState({ repository: fakeRepo() });
+  s.setOcrStatus({ enabled: true });
+  s.setOcrStatus({ lastCaptureMs: 210, lastError: 'x' });
+  assert.deepEqual(s.snapshot().ocr, { enabled: true, running: false, lastCaptureMs: 210, lastCaptureAt: null, lastError: 'x' });
+});
+
+test('getChampData returns data only for the current champion', async () => {
+  const s = createAppState({ repository: fakeRepo() });
+  assert.equal(s.getChampData(), null);
+  await s.setGame(game({ championId: 157 }));
+  assert.equal(s.getChampData().champion.id, 157);
+  await s.setGame(game({ championId: 62 }));
+  assert.equal(s.getChampData().champion.id, 62);
+});
