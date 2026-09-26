@@ -7,7 +7,6 @@ test('defaults when nothing given', () => {
   assert.equal(c.port, 3777);
   assert.equal(c.pollMs, 2000);
   assert.equal(c.cacheTtlMs, 24 * 3600 * 1000);
-  assert.equal(c.aramggApiKey, null);
   assert.equal(c.primarySource, 'aramkit');
   assert.equal(c.open, false);
   assert.match(c.lockfilePath, /lockfile$/);
@@ -15,12 +14,11 @@ test('defaults when nothing given', () => {
 });
 
 test('env overrides defaults', () => {
-  const c = loadConfig({ env: { PORT: '4000', POLL_MS: '500', CACHE_TTL_H: '2', ARAMGG_API_KEY: 'hx_live_x', PRIMARY_SOURCE: 'aramgg', LOL_LOCKFILE: 'D:\\lol\\lockfile', CACHE_DIR: 'tmp/c' }, argv: [] });
+  const c = loadConfig({ env: { PORT: '4000', POLL_MS: '500', CACHE_TTL_H: '2', PRIMARY_SOURCE: 'aramkit', LOL_LOCKFILE: 'D:\\lol\\lockfile', CACHE_DIR: 'tmp/c' }, argv: [] });
   assert.equal(c.port, 4000);
   assert.equal(c.pollMs, 500);
   assert.equal(c.cacheTtlMs, 2 * 3600 * 1000);
-  assert.equal(c.aramggApiKey, 'hx_live_x');
-  assert.equal(c.primarySource, 'aramgg');
+  assert.equal(c.primarySource, 'aramkit');
   assert.equal(c.lockfilePath, 'D:\\lol\\lockfile');
   assert.equal(c.cacheDir, 'tmp/c');
 });
@@ -40,4 +38,5 @@ test('invalid numbers and sources throw', () => {
   assert.throws(() => loadConfig({ env: { PORT: 'abc' }, argv: [] }), /Invalid port/);
   assert.throws(() => loadConfig({ env: {}, argv: ['--port=0'] }), /Invalid port/);
   assert.throws(() => loadConfig({ env: { PRIMARY_SOURCE: 'opgg' }, argv: [] }), /Invalid primary source/);
+  assert.throws(() => loadConfig({ env: { PRIMARY_SOURCE: 'aramgg' }, argv: [] }), /Invalid primary source/);
 });

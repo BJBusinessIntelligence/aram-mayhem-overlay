@@ -6,7 +6,6 @@ export const DEFAULTS = Object.freeze({
   cacheDir: path.join('data', 'cache'),
   cacheTtlMs: 24 * 60 * 60 * 1000,
   lockfilePath: 'C:\\Riot Games\\League of Legends\\lockfile',
-  aramggApiKey: null,
   primarySource: 'aramkit',
   open: false,
 });
@@ -47,11 +46,9 @@ export function loadConfig({ env = {}, argv = [] } = {}) {
   if (dir !== undefined) c.cacheDir = dir;
   const lock = pick('lockfile', 'LOL_LOCKFILE');
   if (lock !== undefined) c.lockfilePath = lock;
-  const key = pick('aramgg-key', 'ARAMGG_API_KEY');
-  if (key) c.aramggApiKey = key;
   const src = pick('primary', 'PRIMARY_SOURCE');
   if (src !== undefined) {
-    if (!['aramkit', 'aramgg'].includes(src)) throw new Error(`Invalid primary source: ${src}`);
+    if (!['aramkit'].includes(src)) throw new Error(`Invalid primary source: ${src}`);
     c.primarySource = src;
   }
   if (args.open === 'true') c.open = true;
