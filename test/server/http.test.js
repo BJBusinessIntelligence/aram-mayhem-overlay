@@ -99,6 +99,31 @@ test('POST /api/ocr/capture forwards region and save; unknown region falls back 
   assert.deepEqual(watcherCalls.at(-1), ['capture', { region: 'band', save: false }]);
 });
 
+test('GET /api/ocr/capture?save=1 forwards save from the query string with no body', async () => {
+  const r = await fetch(`${base2}/api/ocr/capture?save=1`);
+  assert.equal(r.status, 200);
+  const body = await r.json();
+  assert.equal(body.savedTo, 'data/debug/x.png');
+  assert.deepEqual(watcherCalls.at(-1), ['capture', { region: 'band', save: true }]);
+});
+
+test('POST /api/ocr/capture body region + query save: query wins, body region kept', async () => {
+  const r = await fetch(`${base2}/api/ocr/capture?save=true`, { method: 'POST', body: JSON.stringify({ region: 'full' }) });
+  assert.equal(r.status, 200);
+  assert.deepEqual(watcherCalls.at(-1), ['capture', { region: 'full', save: true }]);
+});
+
+test('POST /api/ocr/capture query region overrides body region', async () => {
+  const r = await fetch(`${base2}/api/ocr/capture?region=full`, { method: 'POST', body: JSON.stringify({ region: 'band', save: true }) });
+  assert.equal(r.status, 200);
+  assert.deepEqual(watcherCalls.at(-1), ['capture', { region: 'full', save: true }]);
+});
+
+test('POST /api/ocr/capture response includes a summary computed from the capture result', async () => {
+  const r = await post2('/api/ocr/capture', { save: true });
+  assert.deepEqual(r.body.summary, { lines: 0, matched: 0, rarity: null, savedTo: 'data/debug/x.png' });
+});
+
 test('POST /api/ocr/capture maps a failed capture to 502', async () => {
   captureOk = false;
   const r = await post2('/api/ocr/capture', {});

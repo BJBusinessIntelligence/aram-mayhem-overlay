@@ -25,6 +25,7 @@ export function createOfferWatcher({
   setTimer = setTimeout, clearTimer = clearTimeout,
   idleMs = 1500, activeMs = 500, region = 'band',
   debugDir = null, autoDump = false, fs = null, path = null, log = () => {},
+  maxTickDumps = 100,
 }) {
   let enabled = false;
   let stopped = true;
@@ -48,6 +49,17 @@ export function createOfferWatcher({
   function clearOffer() {
     if (publishedKey) { publishedKey = null; state.setOffer(null); }
     lastKey = null; agree = 0; noMatch = 0;
+  }
+
+  // Best-effort cap on tick-*.json debug dumps: after a write, drop the oldest ones (by name,
+  // which embeds the capture timestamp) past maxTickDumps. Never awaited by tick() itself.
+  async function pruneTickDumps() {
+    try {
+      const names = await fs.readdir(debugDir);
+      const ticks = names.filter((n) => n.startsWith('tick-') && n.endsWith('.json')).sort();
+      const excess = ticks.length - maxTickDumps;
+      if (excess > 0) await Promise.all(ticks.slice(0, excess).map((n) => fs.rm(path.resolve(debugDir, n)).catch(() => {})));
+    } catch { /* best effort */ }
   }
 
   function reportError(message) {
@@ -76,6 +88,10 @@ export function createOfferWatcher({
       lastErrorMessage = null;
       const champData = state.getChampData();
       const match = matchOffer(cap.lines, indexFor(champData), { frameW: cap.w, frameH: cap.h });
+      if (autoDump && debugDir && fs && path) {
+        const dump = { capture: { w: cap.w, h: cap.h, window: cap.window, ms: cap.ms, lines: cap.lines }, match };
+        fs.writeFile(path.resolve(debugDir, `tick-${now()}.json`), JSON.stringify(dump, null, 2)).then(() => pruneTickDumps()).catch(() => {});
+      }
       if (!match) { noMatch++; if (noMatch >= 2) clearOffer(); return; }
       noMatch = 0;
       const key = match.cards.map((c) => c.augmentId ?? '-').join(',');

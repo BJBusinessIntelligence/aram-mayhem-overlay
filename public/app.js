@@ -51,6 +51,7 @@ async function tick() {
 
 function render(p, state) {
   $('#live-btn').hidden = !preview;
+  $('#capture-btn').hidden = !p.ocr || !p.ocr.enabled;
   const g = p.game;
   const c = p.champ;
   const icon = $('#champ-icon');
@@ -172,6 +173,13 @@ $('#refresh-btn').addEventListener('click', async () => {
   lastRendered = ''; lastRenderKey = ''; tick();
 });
 $('#live-btn').addEventListener('click', () => { preview = null; lastRendered = ''; lastRenderKey = ''; tick(); });
+$('#capture-btn').addEventListener('click', async () => {
+  try {
+    const r = await api('/api/ocr/capture?save=1', { method: 'POST' });
+    const s = r.summary ?? {};
+    setBanner(`Captured: ${s.lines} lines, ${s.matched} matched → ${s.savedTo}`, 'warn');
+  } catch (e) { setBanner(e.message); }
+});
 $('#offer-dismiss').addEventListener('click', () => { const o = JSON.parse(lastRendered || '{}').offer; dismissedOfferAt = o ? o.detectedAt : null; lastRendered = ''; lastRenderKey = ''; tick(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#offer').hidden) $('#offer-dismiss').click(); });
 

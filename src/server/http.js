@@ -69,16 +69,26 @@ export function createServer({ state, champIndex, publicDir, watcher = null }) {
         await state.refresh();
         return send(res, 200, state.snapshot());
       }
-      if (req.method === 'POST' && p === '/api/ocr/capture') {
+      if ((req.method === 'GET' || req.method === 'POST') && p === '/api/ocr/capture') {
         if (!watcher) return send(res, 503, { error: 'OCR not configured' });
-        const body = JSON.parse((await readBody(req)) || '{}');
+        const body = req.method === 'POST' ? JSON.parse((await readBody(req)) || '{}') : {};
+        // Query params win over the JSON body so a plain `curl.exe -X POST ".../capture?save=1"`
+        // (no body, PowerShell-safe) works the same as a POST body under any shell.
+        const region = (q.region !== undefined ? q.region : body.region) === 'full' ? 'full' : 'band';
+        const save = q.save !== undefined ? (q.save === '1' || q.save === 'true') : body.save === true;
         let result;
         try {
-          result = await watcher.captureOnce({ region: body.region === 'full' ? 'full' : 'band', save: body.save === true });
+          result = await watcher.captureOnce({ region, save });
         } catch (e) {
           return send(res, 502, { error: e && e.message ? e.message : String(e) });
         }
-        return send(res, result.capture && result.capture.ok ? 200 : 502, result);
+        const summary = {
+          lines: (result.capture && result.capture.lines) ? result.capture.lines.length : 0,
+          matched: result.match ? result.match.matched : 0,
+          rarity: result.match ? result.match.rarity : null,
+          savedTo: result.savedTo ?? null,
+        };
+        return send(res, result.capture && result.capture.ok ? 200 : 502, { ...result, summary });
       }
       if (req.method === 'POST' && p === '/api/ocr') {
         if (!watcher) return send(res, 503, { error: 'OCR not configured' });

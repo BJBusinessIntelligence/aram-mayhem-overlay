@@ -17,6 +17,7 @@ const EMPTY = { ok: true, ...FRAME, window: true, ms: 200, lines: [] };
 function setup({
   phase = 'ingame', level = 7, available = true, frames = [], enabled = true,
   debugDir = null, fs: fsArg = null, path: pathArg = null, autoDump = false,
+  maxTickDumps = 100, now = () => 1000,
 } = {}) {
   const queue = frames.slice();
   const captures = [];
@@ -29,23 +30,31 @@ function setup({
   const timers = [];
   const setTimer = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
   const w = createOfferWatcher({
-    worker, state, setTimer, clearTimer: () => {}, now: () => 1000, idleMs: 1500, activeMs: 500,
-    debugDir, fs: fsArg, path: pathArg, autoDump,
+    worker, state, setTimer, clearTimer: () => {}, now, idleMs: 1500, activeMs: 500,
+    debugDir, fs: fsArg, path: pathArg, autoDump, maxTickDumps,
   });
   w.setEnabled(enabled);
   return { w, st, captures, timers, queue };
 }
 
-// Fake fs: records mkdir/writeFile calls without touching disk.
-function fakeFs() {
+// Fake fs: records mkdir/writeFile/readdir/rm calls without touching disk.
+function fakeFs({ readdirResult = [] } = {}) {
   const mkdirCalls = [];
   const writeFileCalls = [];
+  const readdirCalls = [];
+  const rmCalls = [];
   return {
-    mkdirCalls, writeFileCalls,
+    mkdirCalls, writeFileCalls, readdirCalls, rmCalls,
     mkdir: async (dir, opts) => { mkdirCalls.push({ dir, opts }); },
     writeFile: async (p, data) => { writeFileCalls.push({ path: p, data }); },
+    readdir: async (dir) => { readdirCalls.push(dir); return readdirResult; },
+    rm: async (p) => { rmCalls.push(p); },
   };
 }
+
+// Flushes the microtask queue so fire-and-forget writeFile().then(prune) chains settle
+// before assertions run.
+const flush = () => new Promise((r) => setImmediate(r));
 
 test('not in game: no capture, status updated, no offer', async () => {
   const { w, st, captures } = setup({ phase: 'none' });
@@ -147,6 +156,35 @@ test('autoDump:false: a published offer does not auto-dump a debug file', async 
   await w.tick(); await w.tick();
   assert.equal(st.offers.length, 1);
   assert.equal(fs.writeFileCalls.length, 0);
+});
+
+test('autoDump:true, in-game tick with no offer match still writes one tick-*.json', async () => {
+  const fs = fakeFs();
+  const { w } = setup({ debugDir: 'data/debug', fs, path, autoDump: true, now: () => 42 });
+  await w.tick();
+  assert.equal(fs.writeFileCalls.length, 1);
+  const call = fs.writeFileCalls[0];
+  assert.ok(call.path.endsWith(`tick-42.json`));
+  const dump = JSON.parse(call.data);
+  assert.deepEqual(Object.keys(dump).sort(), ['capture', 'match']);
+  assert.deepEqual(Object.keys(dump.capture).sort(), ['h', 'lines', 'ms', 'w', 'window']);
+  assert.equal(dump.match, null);
+});
+
+test('autoDump:false: an in-game tick writes no tick-*.json', async () => {
+  const fs = fakeFs();
+  const { w } = setup({ debugDir: 'data/debug', fs, path, autoDump: false });
+  await w.tick();
+  assert.equal(fs.writeFileCalls.length, 0);
+});
+
+test('maxTickDumps caps tick-*.json files, removing the oldest by name', async () => {
+  const fs = fakeFs({ readdirResult: ['tick-100.json', 'tick-200.json', 'tick-300.json', 'offer-999.json'] });
+  const { w } = setup({ debugDir: 'data/debug', fs, path, autoDump: true, maxTickDumps: 2, now: () => 400 });
+  await w.tick();
+  await flush();
+  assert.equal(fs.rmCalls.length, 1);
+  assert.ok(fs.rmCalls[0].endsWith('tick-100.json'));
 });
 
 test('phase leaving ingame clears a published offer on the next tick', async () => {
