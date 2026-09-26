@@ -108,3 +108,58 @@ test('stop() sends quit and kills; ping works', async () => {
   assert.ok(seen.includes('quit'));
   assert.equal(children[0].killed, true);
 });
+
+test('stdin write failure discards the child; next request spawns a new one', async () => {
+  const children = [];
+  let spawnCount = 0;
+  const spawn = () => {
+    spawnCount += 1;
+    const idx = spawnCount;
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stdout.setEncoding = () => {};
+    child.stderr = new EventEmitter();
+    child.killed = false;
+    child.kill = () => { child.killed = true; setImmediate(() => child.emit('exit', 1)); };
+    child.stdin = {
+      write: (s) => {
+        if (idx === 1) throw new Error('EPIPE: write after end');
+        JSON.parse(s);
+        setImmediate(() => child.stdout.emit('data', JSON.stringify({ ok: true, w: 1, h: 1, ms: 1, lines: [] }) + '\n'));
+      },
+    };
+    children.push(child);
+    setImmediate(() => child.stdout.emit('data', JSON.stringify({ ok: true, ready: true, lang: 'en-US' }) + '\n'));
+    return child;
+  };
+  const w = createOcrWorker({ spawn, platform: 'win32' });
+  const r1 = await w.capture();
+  assert.equal(r1.ok, false);
+  const r2 = await w.capture();
+  assert.equal(r2.ok, true);
+  assert.equal(children.length, 2);
+});
+
+test('spawn throwing resolves ok:false and counts toward the budget', async () => {
+  const spawn = () => { throw new Error('spawn ENOENT'); };
+  const w = createOcrWorker({ spawn, platform: 'win32', maxRespawns: 2 });
+  const r1 = await w.capture();
+  assert.equal(r1.ok, false);
+  const r2 = await w.capture();
+  assert.equal(r2.ok, false);
+  const r3 = await w.capture();
+  assert.equal(r3.ok, false);
+  assert.equal(w.isAvailable(), false);
+});
+
+test('stop() settles an in-flight request immediately', async () => {
+  const { spawn } = fakeSpawnFactory({ respond: () => undefined });
+  const w = createOcrWorker({ spawn, platform: 'win32', timeoutMs: 500 });
+  const started = Date.now();
+  const pending = w.capture();
+  setImmediate(() => w.stop());
+  const r = await pending;
+  const elapsed = Date.now() - started;
+  assert.equal(r.ok, false);
+  assert.equal(r.error, 'stopped');
+  assert.ok(elapsed < 200, `expected < 200ms, got ${elapsed}ms`);
+});

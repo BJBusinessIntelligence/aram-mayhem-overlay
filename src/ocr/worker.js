@@ -58,7 +58,16 @@ export function createOcrWorker({
     }
     spawnTimes.push(t);
     buffer = '';
-    const proc = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+    let proc;
+    try {
+      proc = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+    } catch (e) {
+      // Synchronous spawn failure (e.g. powershell.exe missing): count it toward the respawn
+      // budget (already pushed above) but leave `child` unset so the caller resolves ok:false
+      // instead of the promise rejecting.
+      lastError = e.message; log(`[ocr] ${lastError}`);
+      return;
+    }
     child = proc;
     if (proc.stdout.setEncoding) proc.stdout.setEncoding('utf8');
     // Guard every handler by current-child identity: once a child is superseded (killed on
@@ -95,7 +104,14 @@ export function createOcrWorker({
       }, timeoutMs);
       pending = { resolve, timer };
       try { proc.stdin.write(JSON.stringify(obj) + '\n'); }
-      catch (e) { settlePending({ ok: false, error: e.message }); }
+      catch (e) {
+        // A synchronous write failure means this child is broken: discard it (so it never gets
+        // reused) and don't leave a zombie process around, rather than just failing this request.
+        lastError = e.message;
+        if (child === proc) child = null;
+        try { proc.kill(); } catch { /* already gone */ }
+        settlePending({ ok: false, error: e.message });
+      }
     });
     queue = queue.then(run, run);
     return queue;
@@ -110,6 +126,7 @@ export function createOcrWorker({
     ping: () => (supported ? request({ cmd: 'ping' }) : Promise.resolve(UNAVAILABLE('OCR is Windows-only'))),
     stop() {
       const proc = child; child = null;
+      if (pending) settlePending({ ok: false, error: 'stopped' });
       if (!proc) return;
       try { proc.stdin.write('{"cmd":"quit"}\n'); } catch { /* ignore */ }
       try { proc.kill(); } catch { /* ignore */ }
