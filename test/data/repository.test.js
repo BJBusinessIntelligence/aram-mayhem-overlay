@@ -26,7 +26,7 @@ function setup(opts = {}) {
   const fs = createMemFs();
   const cache = createCache({ dir: 'c', ttlMs: 1000, fs, now: () => clock.t });
   const primary = opts.primary ?? fakeAdapter('aramkit');
-  const fallback = opts.fallback === undefined ? fakeAdapter('aramgg', { brackets: ['all'] }) : opts.fallback;
+  const fallback = opts.fallback === undefined ? fakeAdapter('fallback', { brackets: ['all'] }) : opts.fallback;
   return { repo: createRepository({ primary, fallback, cache }), primary, fallback, cache, clock };
 }
 
@@ -58,18 +58,18 @@ test('expired cache refetches; version mismatch refetches', async () => {
 test('primary failure → fallback, bracket downgraded to all', async () => {
   const { repo, fallback } = setup({ primary: fakeAdapter('aramkit', { fail: true }) });
   const r = await repo.getChamp(157, 'high');
-  assert.equal(r.source, 'aramgg');
+  assert.equal(r.source, 'fallback');
   assert.deepEqual(fallback.calls, [[157, 'all']]);
   assert.equal(r.data.bracket, 'all');
 });
 
 test('primary version failure → fallback', async () => {
   const { repo } = setup({ primary: fakeAdapter('aramkit', { fail: 'version' }) });
-  assert.equal((await repo.getChamp(157, 'all')).source, 'aramgg');
+  assert.equal((await repo.getChamp(157, 'all')).source, 'fallback');
 });
 
 test('disabled fallback is skipped', async () => {
-  const { repo } = setup({ primary: fakeAdapter('aramkit', { fail: true }), fallback: fakeAdapter('aramgg', { enabled: false }) });
+  const { repo } = setup({ primary: fakeAdapter('aramkit', { fail: true }), fallback: fakeAdapter('fallback', { enabled: false }) });
   await assert.rejects(repo.getChamp(157, 'all'), DataUnavailable);
 });
 
@@ -87,7 +87,7 @@ test('both fail with stale cache → stale result with errors', async () => {
 });
 
 test('both fail without cache → DataUnavailable listing both', async () => {
-  const { repo } = setup({ primary: fakeAdapter('aramkit', { fail: true }), fallback: fakeAdapter('aramgg', { fail: true }) });
+  const { repo } = setup({ primary: fakeAdapter('aramkit', { fail: true }), fallback: fakeAdapter('fallback', { fail: true }) });
   await assert.rejects(repo.getChamp(157, 'all'), (e) => e instanceof DataUnavailable && e.errors.length === 2);
 });
 

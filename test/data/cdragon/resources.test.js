@@ -20,6 +20,13 @@ function fakeFetch(routes = {}) {
   return { fetch, calls };
 }
 
+// Simulates a network-level failure (timeout, DNS, connection reset), not an HTTP error status.
+function rejectingFetch() {
+  const calls = [];
+  const fetch = async (url) => { calls.push(url); throw new Error('network unreachable'); };
+  return { fetch, calls };
+}
+
 function urls() {
   return {
     augments: `${CDRAGON_BASE}v1/cherry-augments.json`,
@@ -95,4 +102,30 @@ test('disk cache older than 24h is refetched', async () => {
 test('non-200 response throws HttpError', async () => {
   const { resources } = setup({ routes: {} });
   await assert.rejects(resources.load(), (e) => e instanceof HttpError && e.status === 404);
+});
+
+test('a stale (>24h) disk cache is served when the refetch fails, and the failure is logged once', async () => {
+  const fs = createMemFs();
+  const a = setup({ fs, t: 0 });
+  await a.resources.load();
+
+  const clock = { t: 24 * 3600_000 + 1 };
+  const cache = createCache({ dir: 'cache', ttlMs: 3600_000, fs, now: () => clock.t });
+  const { fetch, calls } = rejectingFetch();
+  const logs = [];
+  const resources = createCdragonResources({ fetch, cache, now: () => clock.t, log: (msg) => logs.push(msg) });
+
+  const data = await resources.load();
+  assert.equal(calls.length, 4, 'a refetch was attempted for every file');
+  assert.equal(data.augmentsById[1058].nameTRA, 'Mystic Punch');
+  assert.equal(data.itemsById[3006].name, "Berserker's Greaves");
+  assert.equal(logs.length, 4, 'one log line per stale file served');
+  assert.match(logs[0], /cdragon .* refetch failed, serving stale cache/);
+});
+
+test('no disk cache + refetch failure rejects', async () => {
+  const cache = createCache({ dir: 'cache', ttlMs: 3600_000, fs: createMemFs(), now: () => 0 });
+  const { fetch } = rejectingFetch();
+  const resources = createCdragonResources({ fetch, cache, now: () => 0 });
+  await assert.rejects(resources.load(), /network unreachable/);
 });

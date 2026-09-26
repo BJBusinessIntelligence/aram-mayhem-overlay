@@ -1,10 +1,9 @@
 import { normalizeBlitz } from './normalize.js';
 import { createChampionIndexFromCdragon } from '../champions.js';
 
-// `cache` is accepted for interface parity with the other adapters (createAramkitAdapter etc.);
-// blitz doesn't need it directly: CommunityDragon resource caching lives in cdragon/resources.js,
-// and per-champion ChampData caching lives one layer up, in repository.js.
-export function createBlitzAdapter({ client, resources, cache, now = Date.now, versionTtlMs = 6 * 3600 * 1000 } = {}) {
+// No adapter-local cache: CommunityDragon resource caching lives in cdragon/resources.js, and
+// per-champion ChampData caching lives one layer up, in repository.js.
+export function createBlitzAdapter({ client, resources, now = Date.now, versionTtlMs = 6 * 3600 * 1000 } = {}) {
   let lastId = null;
   let versionEntry = null;
   let versionAt = -Infinity;

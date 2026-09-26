@@ -26,7 +26,7 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
   const cfg = loadConfig({ env, argv });
   const cache = createCache({ dir: cfg.cacheDir, ttlMs: cfg.cacheTtlMs });
   const aramkit = createAramkitAdapter({ client: createAramkitClient(), cache });
-  const cdragon = createCdragonResources({ cache });
+  const cdragon = createCdragonResources({ cache, log });
 
   // Startup order: aramkit's own champion list, then CommunityDragon's champion-summary as a
   // fallback (also used by the blitz data source), then an empty index (search/detection disabled).
@@ -46,7 +46,7 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
     }
   }
 
-  const blitz = createBlitzAdapter({ client: createBlitzClient(), resources: cdragon, cache });
+  const blitz = createBlitzAdapter({ client: createBlitzClient(), resources: cdragon });
   const [primary, fallback] = cfg.primarySource === 'blitz' ? [blitz, aramkit] : [aramkit, blitz];
   const repository = createRepository({ primary, fallback, cache });
   log(`data: primary=${primary.name} fallback=${fallback && fallback.enabled ? fallback.name : 'disabled'}`);

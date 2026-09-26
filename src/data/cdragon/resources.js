@@ -30,6 +30,7 @@ export function createCdragonResources({
   fetch = globalThis.fetch,
   cache,
   now = Date.now,
+  log = () => {},
   userAgent = 'aram-mayhem-overlay/0.1 (personal tool)',
 } = {}) {
   let memo = null;
@@ -46,9 +47,20 @@ export function createCdragonResources({
     const key = ['cdragon', name];
     const hit = await cache.get(key);
     if (hit && now() - hit.fetchedAt < REFRESH_MS) return hit.value;
-    const data = await fetchJson(name);
-    await cache.set(key, data);
-    return data;
+    try {
+      const data = await fetchJson(name);
+      await cache.set(key, data);
+      return data;
+    } catch (e) {
+      // A stale-but-present copy is still serviceable: this is the "everything is down at once"
+      // fallback path (aramkit also unreachable), so don't let one cdragon file's blip take the
+      // whole champion index / blitz adapter down when we have something to serve.
+      if (hit) {
+        log(`WARN cdragon ${name} refetch failed, serving stale cache: ${e.message}`);
+        return hit.value;
+      }
+      throw e;
+    }
   }
 
   async function load() {

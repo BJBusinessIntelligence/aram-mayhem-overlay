@@ -1,8 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createBlitzAdapter } from '../../../src/data/blitz/adapter.js';
-import { createCache } from '../../../src/data/cache.js';
-import { createMemFs } from '../../helpers/memfs.js';
 import { fixture } from '../../helpers/fixtures.js';
 
 const mayhem157 = fixture('blitz', 'aram_mayhem_champion-157.json');
@@ -36,10 +34,9 @@ function fakeClient() {
 
 function setup({ t = 1_000_000 } = {}) {
   const clock = { t };
-  const cache = createCache({ dir: 'cache', ttlMs: 3600_000, fs: createMemFs(), now: () => clock.t });
   const client = fakeClient();
   const resources = fakeResources();
-  const adapter = createBlitzAdapter({ client, resources, cache, now: () => clock.t });
+  const adapter = createBlitzAdapter({ client, resources, now: () => clock.t });
   return { adapter, client, resources, clock };
 }
 
