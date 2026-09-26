@@ -72,7 +72,12 @@ export function createServer({ state, champIndex, publicDir, watcher = null }) {
       if (req.method === 'POST' && p === '/api/ocr/capture') {
         if (!watcher) return send(res, 503, { error: 'OCR not configured' });
         const body = JSON.parse((await readBody(req)) || '{}');
-        const result = await watcher.captureOnce({ region: body.region === 'full' ? 'full' : 'band', save: body.save === true });
+        let result;
+        try {
+          result = await watcher.captureOnce({ region: body.region === 'full' ? 'full' : 'band', save: body.save === true });
+        } catch (e) {
+          return send(res, 502, { error: e && e.message ? e.message : String(e) });
+        }
         return send(res, result.capture && result.capture.ok ? 200 : 502, result);
       }
       if (req.method === 'POST' && p === '/api/ocr') {

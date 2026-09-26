@@ -90,12 +90,27 @@ export function matchOffer(lines, index, { frameW, frameH, minScore = 0.8, band 
   const top = scored.sort((a, b) => b.score - a.score).slice(0, 3).sort((a, b) => a.cx - b.cx);
   const cards = SLOTS.map((slot) => ({ slot, augmentId: null, name: null, rarity: null, ocrText: null, score: 0, x: null, y: null }));
   const used = new Set();
-  for (const m of top) {
-    let slot = slotForX(m.cx, frameW);
-    if (used.has(slot)) slot = SLOTS.find((s) => !used.has(s));
-    if (!slot) break;
-    used.add(slot);
-    cards[SLOTS.indexOf(slot)] = { slot, augmentId: m.entry.id, name: m.entry.name, rarity: m.entry.rarity, ocrText: m.ocrText, score: m.score, x: m.x, y: m.y };
+  // With all three top matches present, cx order alone determines slot order — no fuzzy-band
+  // collision can move a righter card into a lefter slot. With only two matches, fall back to
+  // `slotForX`, resolving a same-slot collision by giving the later (righter, since `top` is
+  // cx-ascending) match the next free slot to the right of the taken one.
+  if (top.length === 3) {
+    top.forEach((m, i) => {
+      const slot = SLOTS[i];
+      used.add(slot);
+      cards[i] = { slot, augmentId: m.entry.id, name: m.entry.name, rarity: m.entry.rarity, ocrText: m.ocrText, score: m.score, x: m.x, y: m.y };
+    });
+  } else {
+    for (const m of top) {
+      let slot = slotForX(m.cx, frameW);
+      if (used.has(slot)) {
+        const idx = SLOTS.indexOf(slot);
+        slot = SLOTS.slice(idx + 1).find((s) => !used.has(s)) ?? SLOTS.find((s) => !used.has(s));
+      }
+      if (!slot) break;
+      used.add(slot);
+      cards[SLOTS.indexOf(slot)] = { slot, augmentId: m.entry.id, name: m.entry.name, rarity: m.entry.rarity, ocrText: m.ocrText, score: m.score, x: m.x, y: m.y };
+    }
   }
   const matched = cards.filter((c) => c.augmentId != null);
   const tally = {};

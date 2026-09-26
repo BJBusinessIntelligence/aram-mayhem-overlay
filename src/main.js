@@ -76,7 +76,7 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
   const watcher = createOfferWatcher({
     worker: ocrWorker, state, getExtraAugments: () => extraAugments,
     idleMs: cfg.ocrIdleMs, activeMs: cfg.ocrActiveMs, region: cfg.ocrRegion,
-    debugDir: cfg.ocrDebug ? path.join('data', 'debug') : null, fs, path, log,
+    debugDir: path.join('data', 'debug'), autoDump: cfg.ocrDebug, fs, path, log,
   });
   watcher.setEnabled(cfg.ocrEnabled);
   watcher.start();

@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { createOfferWatcher, createAugmentIndexMemo } from '../../src/ocr/watcher.js';
 
 const FRAME = { w: 3440, h: 1440 };
@@ -13,7 +14,10 @@ const champData = { champion: { id: 157, winRate: 0.5 }, augments: { all: rows, 
 const titles = (a, b, c) => ({ ok: true, ...FRAME, window: true, ms: 200, lines: [a, b, c].filter(Boolean).map((t, i) => ({ text: t, x: 1180 + i * 430, y: 640, w: 220, h: 34 })) });
 const EMPTY = { ok: true, ...FRAME, window: true, ms: 200, lines: [] };
 
-function setup({ phase = 'ingame', level = 7, available = true, frames = [], enabled = true } = {}) {
+function setup({
+  phase = 'ingame', level = 7, available = true, frames = [], enabled = true,
+  debugDir = null, fs: fsArg = null, path: pathArg = null, autoDump = false,
+} = {}) {
   const queue = frames.slice();
   const captures = [];
   const worker = { isAvailable: () => available, lastError: () => (available ? null : 'dead'), capture: async (o) => { captures.push(o); return queue.length ? queue.shift() : EMPTY; } };
@@ -24,9 +28,23 @@ function setup({ phase = 'ingame', level = 7, available = true, frames = [], ena
   };
   const timers = [];
   const setTimer = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
-  const w = createOfferWatcher({ worker, state, setTimer, clearTimer: () => {}, now: () => 1000, idleMs: 1500, activeMs: 500 });
+  const w = createOfferWatcher({
+    worker, state, setTimer, clearTimer: () => {}, now: () => 1000, idleMs: 1500, activeMs: 500,
+    debugDir, fs: fsArg, path: pathArg, autoDump,
+  });
   w.setEnabled(enabled);
   return { w, st, captures, timers, queue };
+}
+
+// Fake fs: records mkdir/writeFile calls without touching disk.
+function fakeFs() {
+  const mkdirCalls = [];
+  const writeFileCalls = [];
+  return {
+    mkdirCalls, writeFileCalls,
+    mkdir: async (dir, opts) => { mkdirCalls.push({ dir, opts }); },
+    writeFile: async (p, data) => { writeFileCalls.push({ path: p, data }); },
+  };
 }
 
 test('not in game: no capture, status updated, no offer', async () => {
@@ -109,6 +127,26 @@ test('captureOnce returns capture, match and advice without publishing', async (
   assert.equal(r.advice.pickSlot, 'left');
   assert.equal(r.savedTo, null);
   assert.deepEqual(st.offers, []);
+});
+
+test('captureOnce({save:true}) always saves, regardless of autoDump: one PNG path, one mkdir, one JSON sidecar sharing its basename', async () => {
+  const f = titles('Mystic Punch', 'Final Form', 'Clown College');
+  const fs = fakeFs();
+  const { w } = setup({ frames: [f], debugDir: 'data/debug', fs, path, autoDump: false });
+  const r = await w.captureOnce({ save: true });
+  assert.ok(r.savedTo.endsWith('.png'));
+  assert.equal(fs.mkdirCalls.length, 1);
+  assert.equal(fs.writeFileCalls.length, 1);
+  assert.equal(fs.writeFileCalls[0].path, r.savedTo.replace(/\.png$/, '.json'));
+});
+
+test('autoDump:false: a published offer does not auto-dump a debug file', async () => {
+  const f = titles('Mystic Punch', 'Final Form', 'Clown College');
+  const fs = fakeFs();
+  const { w, st } = setup({ frames: [f, f], debugDir: 'data/debug', fs, path, autoDump: false });
+  await w.tick(); await w.tick();
+  assert.equal(st.offers.length, 1);
+  assert.equal(fs.writeFileCalls.length, 0);
 });
 
 test('phase leaving ingame clears a published offer on the next tick', async () => {

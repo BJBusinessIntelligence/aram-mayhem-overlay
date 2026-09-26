@@ -4,6 +4,7 @@ const $ = (s) => document.querySelector(s);
 
 let preview = null;          // { id, stage, bracket } when browsing a champion manually
 let lastRendered = '';
+let lastRenderKey = '';
 let lastLiveChampionId = null;
 let dismissedOfferAt = null;
 
@@ -37,8 +38,12 @@ async function tick() {
     const payload = preview
       ? await api(`/api/champ/${preview.id}?stage=${preview.stage}&bracket=${preview.bracket}`)
       : state;
-    const json = JSON.stringify(payload);
-    if (json !== lastRendered) { lastRendered = json; render(payload, state); }
+    // The OCR chip (`lastCaptureAt` etc.) changes every tick while in game; excluding it from the
+    // render-skip key keeps the rest of the page (open <details>, text selection) stable between
+    // real changes, while renderOcrChip below still updates on every poll.
+    const key = JSON.stringify({ ...payload, ocr: undefined });
+    if (key !== lastRenderKey) { lastRenderKey = key; lastRendered = JSON.stringify(payload); render(payload, state); }
+    else renderOcrChip(payload.ocr);
   } catch (e) {
     setBanner(`Server unreachable: ${e.message}`);
   }
@@ -99,7 +104,8 @@ function renderOcrChip(o) {
 
 function renderOffer(o) {
   const stage = o.stage && o.stage !== 'all' ? `Stage ${o.stage} · ` : '';
-  $('#offer-title').textContent = `${stage}${o.rarity === 'unknown' ? '' : o.rarity[0].toUpperCase() + o.rarity.slice(1) + ' '}offer`;
+  const rarity = o.rarity || 'unknown';
+  $('#offer-title').textContent = `${stage}${rarity === 'unknown' ? '' : rarity[0].toUpperCase() + rarity.slice(1) + ' '}offer`;
   $('#offer-meta').textContent = `confidence ${Math.round((o.confidence ?? 0) * 100)} % · ${o.frames} frames`;
   $('#offer-note').hidden = !o.note;
   $('#offer-note').textContent = o.note ?? '';
@@ -111,7 +117,7 @@ function renderOffer(o) {
       ? `<div class="stats"><span class="tier ${esc(r.tier ?? '')}">${esc(r.tier ?? '·')}</span><span class="wr">${pct(r.winRate)}</span>${r.lift == null ? '' : `<span class="lift ${r.lift >= 0 ? 'pos' : 'neg'}">${signed(r.lift)}</span>`}<span class="games">${kfmt(r.games)}${r.games != null ? ' games' : ''}</span></div>`
       : `<div class="stats muted">${c.augmentId != null ? 'no data for this champion' : 'not recognised'}</div>`;
     return `<div class="card ${esc(rarity)} ${esc(verdict)}">
-      <div class="ribbon ${esc(verdict)}">${verdict.toUpperCase()}</div>
+      <div class="ribbon ${esc(verdict)}">${esc(verdict.toUpperCase())}</div>
       ${r && r.icon ? img(r.icon, 'icon') : ''}
       <div class="name">${esc(c.name ?? '?')}</div>
       <div class="desc">${esc(r && r.description ? r.description : '')}</div>
@@ -153,7 +159,7 @@ function renderBuild(b) {
 async function setView(patch) {
   if (preview) { Object.assign(preview, patch); }
   else await api('/api/view', { method: 'POST', body: JSON.stringify(patch) });
-  lastRendered = '';
+  lastRendered = ''; lastRenderKey = '';
   tick();
 }
 $('#stage-tabs').addEventListener('click', (e) => { const s = e.target.dataset?.stage; if (s) setView({ stage: s }).catch((e2) => setBanner(e2.message)); });
@@ -163,10 +169,10 @@ $('#refresh-btn').addEventListener('click', async () => {
     if (preview) await api(`/api/champ/${preview.id}?force=1&stage=${preview.stage}&bracket=${preview.bracket}`);
     else await api('/api/refresh', { method: 'POST', body: '{}' });
   } catch (e) { setBanner(e.message); }
-  lastRendered = ''; tick();
+  lastRendered = ''; lastRenderKey = ''; tick();
 });
-$('#live-btn').addEventListener('click', () => { preview = null; lastRendered = ''; tick(); });
-$('#offer-dismiss').addEventListener('click', () => { const o = JSON.parse(lastRendered || '{}').offer; dismissedOfferAt = o ? o.detectedAt : null; lastRendered = ''; tick(); });
+$('#live-btn').addEventListener('click', () => { preview = null; lastRendered = ''; lastRenderKey = ''; tick(); });
+$('#offer-dismiss').addEventListener('click', () => { const o = JSON.parse(lastRendered || '{}').offer; dismissedOfferAt = o ? o.detectedAt : null; lastRendered = ''; lastRenderKey = ''; tick(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#offer').hidden) $('#offer-dismiss').click(); });
 
 let searchTimer;
@@ -190,7 +196,7 @@ $('#search-results').addEventListener('click', (e) => {
   preview = { id: Number(id), stage: 'all', bracket: current };
   $('#search').value = '';
   $('#search-results').hidden = true;
-  lastRendered = '';
+  lastRendered = ''; lastRenderKey = '';
   tick();
 });
 document.addEventListener('click', (e) => { if (!e.target.closest('.search')) $('#search-results').hidden = true; });

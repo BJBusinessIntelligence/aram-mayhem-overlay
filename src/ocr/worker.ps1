@@ -73,6 +73,7 @@ while ($true) {
   if ($null -eq $line) { break }
   if ($line.Trim() -eq '') { continue }
   try { $req = $line | ConvertFrom-Json } catch { Emit @{ ok = $false; error = "bad request" }; continue }
+  if (-not $req.cmd) { Emit @{ ok = $false; error = 'no cmd' }; continue }
   switch ($req.cmd) {
     'ping'    { Emit @{ ok = $true; pong = $true } }
     'quit'    { exit 0 }

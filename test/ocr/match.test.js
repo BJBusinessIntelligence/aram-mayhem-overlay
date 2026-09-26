@@ -91,6 +91,17 @@ test('fewer than two matches → null', () => {
   assert.equal(matchOffer([], index, FRAME), null);
 });
 
+test('slot collision: three matches clustered inside the fuzzy-center window still land in cx order', () => {
+  const cxAt = (frac, w = 220) => frac * FRAME.frameW - w / 2;
+  // 43%, 50%, 57% of width all resolve to 'center' via slotForX (forcing the collision path),
+  // while staying far enough apart (> the 6%-of-width cluster radius) to form three x-clusters.
+  const lines = [line('Mystic Punch', cxAt(0.43), Y), line('Zealot', cxAt(0.50), Y), line('Final Form', cxAt(0.57), Y)];
+  const o = matchOffer(lines, index, FRAME);
+  assert.equal(o.matched, 3);
+  assert.deepEqual(o.cards.map((c) => c.slot), ['left', 'center', 'right']);
+  assert.deepEqual(o.cards.map((c) => c.name), ['Mystic Punch', 'Zealot', 'Final Form']);
+});
+
 test('same name in two clusters keeps both; best score per cluster wins', () => {
   const lines = [line('Mystic Punch', L, Y), line('Mystic Punch', L + 10, Y + 60), line('Zealot', C, Y), line('Final Form', R, Y)];
   const o = matchOffer(lines, index, FRAME);

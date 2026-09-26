@@ -24,6 +24,8 @@ input { font: inherit; color: inherit; background: var(--panel2); border: 1px so
 #banner { margin-top: 8px; padding: 6px 10px; border-radius: 6px; background: #4a1f1f; color: #ffb3b3; font-size: 14px; }
 #banner.warn { background: #4a3a1f; color: #ffe2a8; }
 #main { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 12px 14px; }
+#main[hidden] { display: none; }
+#offer[hidden] { display: none; }
 @media (max-width: 1100px) { #main { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .col { background: var(--panel); border-radius: 10px; padding: 8px 10px; min-height: 200px; }
 .col h2 { margin: 2px 0 8px; font-size: 18px; }
@@ -59,7 +61,7 @@ h2.prismatic { color: var(--prismatic); } h2.gold { color: var(--gold); } h2.sil
 .offer-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .card { position: relative; border-radius: 14px; padding: 18px 16px 16px; background: linear-gradient(180deg, #1b2129, #12161c); border: 3px solid var(--silver); min-height: 420px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .card.gold { border-color: var(--gold); }
-.card.prismatic { border-image: linear-gradient(135deg, #7fe3ff, #c86bff, #7fe3ff) 1; }
+.card.prismatic { border-color: transparent; background: linear-gradient(#171b21,#12161c) padding-box, linear-gradient(135deg, #7fe3ff, #c86bff, #7fe3ff) border-box; }
 .card.pick { box-shadow: 0 0 0 3px #fff, 0 0 28px rgba(79, 209, 139, .6); }
 .card.reroll { opacity: .78; }
 .card.unread { border-style: dashed; opacity: .6; }

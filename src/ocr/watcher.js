@@ -24,7 +24,7 @@ export function createOfferWatcher({
   worker, state, getExtraAugments = () => [], now = Date.now,
   setTimer = setTimeout, clearTimer = clearTimeout,
   idleMs = 1500, activeMs = 500, region = 'band',
-  debugDir = null, fs = null, path = null, log = () => {},
+  debugDir = null, autoDump = false, fs = null, path = null, log = () => {},
 }) {
   let enabled = false;
   let stopped = true;
@@ -85,7 +85,7 @@ export function createOfferWatcher({
         publishedKey = key;
         state.setOffer({ detectedAt: now(), frames: agree, stage: a.stageUsed, rarity: match.rarity, confidence: match.confidence, cards: a.cards, pickSlot: a.pickSlot, note: a.note });
         log(`[ocr] offer: ${a.cards.map((c) => `${c.slot}=${c.name ?? '?'}:${c.verdict}`).join(' ')}${a.note ? ` (${a.note})` : ''}`);
-        if (debugDir && fs && path) fs.writeFile(path.join(debugDir, `offer-${now()}.json`), JSON.stringify({ capture: cap, match }, null, 2)).catch(() => {});
+        if (autoDump && debugDir && fs && path) fs.writeFile(path.resolve(debugDir, `offer-${now()}.json`), JSON.stringify({ capture: cap, match }, null, 2)).catch(() => {});
       }
     } catch (e) {
       reportError(e && e.message ? e.message : String(e));
@@ -122,7 +122,7 @@ export function createOfferWatcher({
       let saveTo = null;
       if (save && debugDir && fs && path) {
         await fs.mkdir(debugDir, { recursive: true });
-        saveTo = path.join(debugDir, `capture-${now()}.png`);
+        saveTo = path.resolve(debugDir, `capture-${now()}.png`);
       }
       const cap = await worker.capture({ region: r, saveTo });
       const champData = state.getChampData();

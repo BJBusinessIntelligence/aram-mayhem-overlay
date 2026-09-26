@@ -107,6 +107,20 @@ test('POST /api/ocr/capture maps a failed capture to 502', async () => {
   assert.equal(r.body.capture.error, 'boom');
 });
 
+test('POST /api/ocr/capture maps a thrown captureOnce error to 502, not 400', async () => {
+  const throwingWatcher = { captureOnce: async () => { throw new Error('worker exited'); }, setEnabled: () => {} };
+  const server3 = createServer({ state, champIndex, publicDir, watcher: throwingWatcher });
+  await new Promise((r) => server3.listen(0, '127.0.0.1', r));
+  const base3 = `http://127.0.0.1:${server3.address().port}`;
+  try {
+    const r = await fetch(`${base3}/api/ocr/capture`, { method: 'POST', body: JSON.stringify({}) });
+    assert.equal(r.status, 502);
+    assert.equal((await r.json()).error, 'worker exited');
+  } finally {
+    server3.close();
+  }
+});
+
 test('POST /api/ocr toggles the watcher and validates the body', async () => {
   const r = await post2('/api/ocr', { enabled: false });
   assert.equal(r.status, 200);
