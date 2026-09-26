@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createBlitzAdapter } from '../../../src/data/blitz/adapter.js';
-import { createChampionIndexFromCdragon } from '../../../src/data/champions.js';
 import { createCache } from '../../../src/data/cache.js';
 import { createMemFs } from '../../helpers/memfs.js';
 import { fixture } from '../../helpers/fixtures.js';
@@ -14,11 +13,13 @@ function fakeResources() {
   const items = fixture('cdragon', 'items.json');
   const spells = fixture('cdragon', 'summoner-spells.json');
   const champions = fixture('cdragon', 'champion-summary.json');
+  // Matches createCdragonResources().load(): champions is the raw champion-summary array; the
+  // adapter is responsible for building the byId/byRiotId index from it.
   const loaded = {
     augmentsById: Object.fromEntries(augments.map((a) => [a.id, a])),
     itemsById: Object.fromEntries(items.map((i) => [i.id, i])),
     spellsById: Object.fromEntries(spells.map((s) => [s.id, s])),
-    champions: createChampionIndexFromCdragon(champions),
+    champions,
   };
   const calls = { load: 0 };
   return { calls, async load() { calls.load++; return loaded; } };
