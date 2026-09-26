@@ -64,7 +64,9 @@ Runtime toggle: `POST /api/ocr {"enabled":false}`.
 Calibration / troubleshooting: `node scripts/ocr-capture.js --full --save data/debug/f.png`
 prints every line the OCR sees with coordinates. During an augment screen, run
 `curl -X POST localhost:3777/api/ocr/capture -d "{\"save\":true}"` to store the frame and
-its match result under `data/debug/` — attach these when reporting a missed offer.
+its match result under `data/debug/` — attach these when reporting a missed offer. This works
+whether or not `--ocr-debug` is set; `--ocr-debug` only controls the *automatic* dump of every
+published offer, not this manual, on-demand capture.
 
 ## Manual smoke checklist
 

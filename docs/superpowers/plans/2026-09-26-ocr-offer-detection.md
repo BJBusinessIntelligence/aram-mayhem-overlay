@@ -22,6 +22,7 @@
 - Config: `OCR_ENABLED`/`--ocr` (default `true` on win32), `OCR_IDLE_MS` 1500, `OCR_ACTIVE_MS` 500, `OCR_REGION` `band`, `OCR_DEBUG`/`--ocr-debug` off.
 - This plan is executed **after** the Blitz-fallback branch is merged. `src/main.js` edits are given as insertions relative to anchors that exist in both versions.
 - Every commit message: subject, blank line, `Co-Authored-By: Claude <model> <noreply@anthropic.com>` trailer on its own line.
+- Deviations recorded during the final-review fix wave: worker `timeoutMs` is `8000`, not spec §6.2's `4000` (measured 200–350 ms per capture in practice, with a cold-start respawn around 2 s, so the larger budget avoids spurious timeouts without materially slowing error detection); the no-rows advice note text is `No data for these augments` / `Champion data not loaded` rather than spec §6.4's reroll-all wording for the "or unmatched" case (clearer about *why* there's no verdict when the row itself is missing); `debugDir` is always set so `POST /api/ocr/capture {"save":true}` works unconditionally, with only the per-offer auto-dump on a published tick gated behind `OCR_DEBUG`/`--ocr-debug`.
 
 ## File Structure
 
