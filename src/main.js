@@ -7,6 +7,8 @@ import { createCache } from './data/cache.js';
 import { createAramkitClient } from './data/aramkit/client.js';
 import { createAramkitAdapter } from './data/aramkit/adapter.js';
 import { createCdragonResources } from './data/cdragon/resources.js';
+import { createBlitzClient } from './data/blitz/client.js';
+import { createBlitzAdapter } from './data/blitz/adapter.js';
 import { createRepository } from './data/repository.js';
 import { createChampionIndex, createChampionIndexFromCdragon } from './data/champions.js';
 import { createAppState } from './server/state.js';
@@ -44,8 +46,8 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
     }
   }
 
-  const primary = aramkit;
-  const fallback = null;
+  const blitz = createBlitzAdapter({ client: createBlitzClient(), resources: cdragon, cache });
+  const [primary, fallback] = cfg.primarySource === 'blitz' ? [blitz, aramkit] : [aramkit, blitz];
   const repository = createRepository({ primary, fallback, cache });
   log(`data: primary=${primary.name} fallback=${fallback && fallback.enabled ? fallback.name : 'disabled'}`);
 

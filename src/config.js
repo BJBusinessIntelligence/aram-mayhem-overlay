@@ -48,7 +48,7 @@ export function loadConfig({ env = {}, argv = [] } = {}) {
   if (lock !== undefined) c.lockfilePath = lock;
   const src = pick('primary', 'PRIMARY_SOURCE');
   if (src !== undefined) {
-    if (!['aramkit'].includes(src)) throw new Error(`Invalid primary source: ${src}`);
+    if (!['aramkit', 'blitz'].includes(src)) throw new Error(`Invalid primary source: ${src}`);
     c.primarySource = src;
   }
   if (args.open === 'true') c.open = true;

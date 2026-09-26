@@ -14,11 +14,11 @@ test('defaults when nothing given', () => {
 });
 
 test('env overrides defaults', () => {
-  const c = loadConfig({ env: { PORT: '4000', POLL_MS: '500', CACHE_TTL_H: '2', PRIMARY_SOURCE: 'aramkit', LOL_LOCKFILE: 'D:\\lol\\lockfile', CACHE_DIR: 'tmp/c' }, argv: [] });
+  const c = loadConfig({ env: { PORT: '4000', POLL_MS: '500', CACHE_TTL_H: '2', PRIMARY_SOURCE: 'blitz', LOL_LOCKFILE: 'D:\\lol\\lockfile', CACHE_DIR: 'tmp/c' }, argv: [] });
   assert.equal(c.port, 4000);
   assert.equal(c.pollMs, 500);
   assert.equal(c.cacheTtlMs, 2 * 3600 * 1000);
-  assert.equal(c.primarySource, 'aramkit');
+  assert.equal(c.primarySource, 'blitz');
   assert.equal(c.lockfilePath, 'D:\\lol\\lockfile');
   assert.equal(c.cacheDir, 'tmp/c');
 });
