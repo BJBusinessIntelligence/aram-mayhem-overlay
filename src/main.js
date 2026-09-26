@@ -6,8 +6,9 @@ import { loadConfig } from './config.js';
 import { createCache } from './data/cache.js';
 import { createAramkitClient } from './data/aramkit/client.js';
 import { createAramkitAdapter } from './data/aramkit/adapter.js';
+import { createCdragonResources } from './data/cdragon/resources.js';
 import { createRepository } from './data/repository.js';
-import { createChampionIndex } from './data/champions.js';
+import { createChampionIndex, createChampionIndexFromCdragon } from './data/champions.js';
 import { createAppState } from './server/state.js';
 import { createServer } from './server/http.js';
 import { httpsGetJson } from './util/httpsJson.js';
@@ -23,14 +24,24 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
   const cfg = loadConfig({ env, argv });
   const cache = createCache({ dir: cfg.cacheDir, ttlMs: cfg.cacheTtlMs });
   const aramkit = createAramkitAdapter({ client: createAramkitClient(), cache });
+  const cdragon = createCdragonResources({ cache });
 
+  // Startup order: aramkit's own champion list, then CommunityDragon's champion-summary as a
+  // fallback (also used by the blitz data source), then an empty index (search/detection disabled).
   let champIndex;
   try {
     champIndex = await aramkit.championIndex();
     log(`champion index: ${champIndex.size} champions (aramkit ${await aramkit.version()})`);
   } catch (e) {
-    champIndex = createChampionIndex({});
-    log(`WARN champion index unavailable: ${e.message}`);
+    log(`WARN champion index unavailable (aramkit): ${e.message}`);
+    try {
+      const res = await cdragon.load();
+      champIndex = createChampionIndexFromCdragon(res.champions);
+      log(`champion index: ${champIndex.size} champions (communitydragon fallback)`);
+    } catch (e2) {
+      champIndex = createChampionIndex({});
+      log(`WARN champion index unavailable (communitydragon): ${e2.message}`);
+    }
   }
 
   const primary = aramkit;

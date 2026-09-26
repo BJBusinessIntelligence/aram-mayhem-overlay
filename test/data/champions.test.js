@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createChampionIndex } from '../../src/data/champions.js';
+import { createChampionIndex, createChampionIndexFromCdragon } from '../../src/data/champions.js';
 import { fixture } from '../helpers/fixtures.js';
 
 const index = createChampionIndex(fixture('aramkit', 'resources-champions.json'));
@@ -32,4 +32,22 @@ test('empty resource gives empty index', () => {
   assert.equal(e.size, 0);
   assert.equal(e.byId(1), null);
   assert.deepEqual(e.all(), []);
+});
+
+const cdragonIndex = createChampionIndexFromCdragon(fixture('cdragon', 'champion-summary.json'));
+
+test('createChampionIndexFromCdragon builds the same index interface, skipping id -1', () => {
+  assert.ok(cdragonIndex.size > 100);
+  assert.equal(cdragonIndex.byId(-1), null);
+  assert.equal(cdragonIndex.byId(157).name, 'Yasuo');
+  assert.equal(cdragonIndex.byId(157).riotId, 'Yasuo');
+  assert.equal(cdragonIndex.byId(62).name, 'Wukong');
+  assert.equal(cdragonIndex.byId(62).riotId, 'MonkeyKing');
+  assert.equal(cdragonIndex.byRiotId('monkeyking').name, 'Wukong');
+  assert.ok(cdragonIndex.search('yasuo').some((c) => c.id === 157));
+});
+
+test('createChampionIndexFromCdragon defaults to empty array', () => {
+  const e = createChampionIndexFromCdragon();
+  assert.equal(e.size, 0);
 });
