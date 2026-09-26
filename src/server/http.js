@@ -40,7 +40,7 @@ export function parseView(q) {
   return out;
 }
 
-export function createServer({ state, champIndex, publicDir }) {
+export function createServer({ state, champIndex, publicDir, watcher = null }) {
   return http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -67,6 +67,19 @@ export function createServer({ state, champIndex, publicDir }) {
       }
       if (req.method === 'POST' && p === '/api/refresh') {
         await state.refresh();
+        return send(res, 200, state.snapshot());
+      }
+      if (req.method === 'POST' && p === '/api/ocr/capture') {
+        if (!watcher) return send(res, 503, { error: 'OCR not configured' });
+        const body = JSON.parse((await readBody(req)) || '{}');
+        const result = await watcher.captureOnce({ region: body.region === 'full' ? 'full' : 'band', save: body.save === true });
+        return send(res, result.capture && result.capture.ok ? 200 : 502, result);
+      }
+      if (req.method === 'POST' && p === '/api/ocr') {
+        if (!watcher) return send(res, 503, { error: 'OCR not configured' });
+        const body = JSON.parse((await readBody(req)) || '{}');
+        if (typeof body.enabled !== 'boolean') return send(res, 400, { error: 'enabled must be boolean' });
+        watcher.setEnabled(body.enabled);
         return send(res, 200, state.snapshot());
       }
       return send(res, 404, { error: 'not found' });

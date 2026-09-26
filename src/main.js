@@ -18,6 +18,8 @@ import { readLockfile } from './game/lockfile.js';
 import { createLcuClient } from './game/lcu.js';
 import { createLiveClient } from './game/liveclient.js';
 import { createDetector } from './game/detector.js';
+import { createOcrWorker } from './ocr/worker.js';
+import { createOfferWatcher } from './ocr/watcher.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -65,12 +67,27 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
   });
   detector.start();
 
-  const server = createServer({ state, champIndex, publicDir: path.join(here, '..', 'public') });
+  let extraAugments = [];
+  try {
+    const res = await aramkit.resources();
+    extraAugments = Object.entries(res.augments ?? {}).map(([id, a]) => ({ id: Number(id), name: a.name, rarity: a.rarity }));
+  } catch { /* names come from champion data only */ }
+  const ocrWorker = createOcrWorker({ log });
+  const watcher = createOfferWatcher({
+    worker: ocrWorker, state, getExtraAugments: () => extraAugments,
+    idleMs: cfg.ocrIdleMs, activeMs: cfg.ocrActiveMs, region: cfg.ocrRegion,
+    debugDir: cfg.ocrDebug ? path.join('data', 'debug') : null, fs, path, log,
+  });
+  watcher.setEnabled(cfg.ocrEnabled);
+  watcher.start();
+  log(`ocr: enabled=${cfg.ocrEnabled} available=${ocrWorker.isAvailable()} region=${cfg.ocrRegion}`);
+
+  const server = createServer({ state, champIndex, publicDir: path.join(here, '..', 'public'), watcher });
   await new Promise((resolve) => server.listen(cfg.port, '127.0.0.1', resolve));
   const url = `http://localhost:${cfg.port}`;
   log(`overlay: ${url}`);
   if (cfg.open) spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
-  return { server, detector, stop: () => { detector.stop(); server.close(); } };
+  return { server, detector, stop: () => { watcher.stop(); ocrWorker.stop(); detector.stop(); server.close(); } };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

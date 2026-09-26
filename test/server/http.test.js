@@ -70,6 +70,50 @@ test('POST /api/view and /api/refresh', async () => {
   assert.equal(refreshCalls, 1);
 });
 
+const watcherCalls = [];
+let captureOk = true;
+const fakeWatcher = {
+  captureOnce: async (o) => { watcherCalls.push(['capture', o]); return { capture: { ok: captureOk, error: captureOk ? undefined : 'boom', lines: [] }, match: null, advice: null, savedTo: o.save ? 'data/debug/x.png' : null }; },
+  setEnabled: (v) => { watcherCalls.push(['enabled', v]); },
+};
+const server2 = createServer({ state, champIndex, publicDir, watcher: fakeWatcher });
+await new Promise((r) => server2.listen(0, '127.0.0.1', r));
+const base2 = `http://127.0.0.1:${server2.address().port}`;
+after(() => server2.close());
+const post2 = async (p, body) => { const r = await fetch(base2 + p, { method: 'POST', body: JSON.stringify(body) }); return { status: r.status, body: await r.json() }; };
+
+test('POST /api/ocr/capture and /api/ocr without a watcher → 503', async () => {
+  assert.equal((await post('/api/ocr/capture', {})).status, 503);
+  assert.equal((await post('/api/ocr', { enabled: true })).status, 503);
+});
+
+test('POST /api/ocr/capture forwards region and save; unknown region falls back to band', async () => {
+  const ok = await post2('/api/ocr/capture', { region: 'full', save: true });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.savedTo, 'data/debug/x.png');
+  assert.deepEqual(watcherCalls.at(-1), ['capture', { region: 'full', save: true }]);
+  const dflt = await post2('/api/ocr/capture', {});
+  assert.equal(dflt.status, 200);
+  assert.deepEqual(watcherCalls.at(-1), ['capture', { region: 'band', save: false }]);
+  await post2('/api/ocr/capture', { region: 'left', save: 'yes' });
+  assert.deepEqual(watcherCalls.at(-1), ['capture', { region: 'band', save: false }]);
+});
+
+test('POST /api/ocr/capture maps a failed capture to 502', async () => {
+  captureOk = false;
+  const r = await post2('/api/ocr/capture', {});
+  captureOk = true;
+  assert.equal(r.status, 502);
+  assert.equal(r.body.capture.error, 'boom');
+});
+
+test('POST /api/ocr toggles the watcher and validates the body', async () => {
+  const r = await post2('/api/ocr', { enabled: false });
+  assert.equal(r.status, 200);
+  assert.deepEqual(watcherCalls.at(-1), ['enabled', false]);
+  assert.equal((await post2('/api/ocr', { enabled: 'yes' })).status, 400);
+});
+
 test('parseView', () => {
   assert.deepEqual(parseView({ stage: '3' }), { stage: 3 });
   assert.deepEqual(parseView({ stage: 'auto', bracket: 'all' }), { stage: 'auto', bracket: 'all' });
