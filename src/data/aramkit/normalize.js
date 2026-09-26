@@ -3,6 +3,13 @@ import { NormalizeError, STAGES } from '../model.js';
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const byPickDesc = (a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0);
 
+// Flatten aramkit tooltip blocks ({ blocks: [{ spans: [{ text }] }] }) to plain text.
+export function flattenTooltip(tooltip) {
+  const blocks = tooltip && Array.isArray(tooltip.blocks) ? tooltip.blocks : [];
+  const text = blocks.map((b) => (Array.isArray(b.spans) ? b.spans.map((s) => s.text ?? '').join('') : '')).join(' ').replace(/\s+/g, ' ').trim();
+  return text.length ? text : null;
+}
+
 export function normalizeAramkit(raw, resources, meta) {
   const { champions = {}, augments = {}, items = {}, spells = {}, archetypes = {} } = resources ?? {};
   const iconBase = meta?.iconBase ?? 'https://data.aramkit.com/';
@@ -27,6 +34,7 @@ export function normalizeAramkit(raw, resources, meta) {
       tier: a.tier ?? null, rank: a.rank ?? null,
       winRate: num(a.winRate), pickRate: num(a.pickRate), games: a.sampleCount ?? 0,
       globalWinRate: num(a.augmentWinRate), icon: icon(r?.icon),
+      description: flattenTooltip(r?.tooltip),
     };
   };
 

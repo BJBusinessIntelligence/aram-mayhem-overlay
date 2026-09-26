@@ -5,6 +5,7 @@ const $ = (s) => document.querySelector(s);
 let preview = null;          // { id, stage, bracket } when browsing a champion manually
 let lastRendered = '';
 let lastLiveChampionId = null;
+let dismissedOfferAt = null;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = (v, d = 1) => (v == null ? '–' : (v * 100).toFixed(d) + '%');
@@ -77,6 +78,47 @@ function render(p, state) {
     $(`#col-${r} .rows`).innerHTML = rows.map(renderAugment).join('') || '<div class="muted">–</div>';
   }
   $('#build').innerHTML = renderBuild(p.build);
+
+  renderOcrChip(p.ocr);
+  const offer = p.offer;
+  const showOffer = offer && dismissedOfferAt !== offer.detectedAt;
+  $('#offer').hidden = !showOffer;
+  $('#main').hidden = !!showOffer;
+  if (showOffer) renderOffer(offer);
+}
+
+function renderOcrChip(o) {
+  const el = $('#ocr-chip');
+  if (!o) { el.hidden = true; return; }
+  el.hidden = false;
+  if (!o.enabled) { el.textContent = 'OCR off'; el.className = 'chip'; return; }
+  if (o.lastError) { el.textContent = `OCR: ${o.lastError}`; el.className = 'chip err'; return; }
+  el.textContent = o.running ? `OCR on${o.lastCaptureMs != null ? ` · ${o.lastCaptureMs} ms` : ''}` : 'OCR idle';
+  el.className = 'chip on';
+}
+
+function renderOffer(o) {
+  const stage = o.stage && o.stage !== 'all' ? `Stage ${o.stage} · ` : '';
+  $('#offer-title').textContent = `${stage}${o.rarity === 'unknown' ? '' : o.rarity[0].toUpperCase() + o.rarity.slice(1) + ' '}offer`;
+  $('#offer-meta').textContent = `confidence ${Math.round((o.confidence ?? 0) * 100)} % · ${o.frames} frames`;
+  $('#offer-note').hidden = !o.note;
+  $('#offer-note').textContent = o.note ?? '';
+  $('#offer-cards').innerHTML = o.cards.map((c) => {
+    const r = c.row;
+    const rarity = c.rarity ?? o.rarity ?? 'silver';
+    const verdict = c.verdict ?? 'unread';
+    const stats = r
+      ? `<div class="stats"><span class="tier ${esc(r.tier ?? '')}">${esc(r.tier ?? '·')}</span><span class="wr">${pct(r.winRate)}</span>${r.lift == null ? '' : `<span class="lift ${r.lift >= 0 ? 'pos' : 'neg'}">${signed(r.lift)}</span>`}<span class="games">${kfmt(r.games)}${r.games != null ? ' games' : ''}</span></div>`
+      : `<div class="stats muted">${c.augmentId != null ? 'no data for this champion' : 'not recognised'}</div>`;
+    return `<div class="card ${esc(rarity)} ${esc(verdict)}">
+      <div class="ribbon ${esc(verdict)}">${verdict.toUpperCase()}</div>
+      ${r && r.icon ? img(r.icon, 'icon') : ''}
+      <div class="name">${esc(c.name ?? '?')}</div>
+      <div class="desc">${esc(r && r.description ? r.description : '')}</div>
+      ${stats}
+      ${c.ocrText && c.ocrText !== c.name ? `<div class="ocr">read as "${esc(c.ocrText)}"</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function renderAugment(a) {
@@ -124,6 +166,8 @@ $('#refresh-btn').addEventListener('click', async () => {
   lastRendered = ''; tick();
 });
 $('#live-btn').addEventListener('click', () => { preview = null; lastRendered = ''; tick(); });
+$('#offer-dismiss').addEventListener('click', () => { const o = JSON.parse(lastRendered || '{}').offer; dismissedOfferAt = o ? o.detectedAt : null; lastRendered = ''; tick(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#offer').hidden) $('#offer-dismiss').click(); });
 
 let searchTimer;
 $('#search').addEventListener('input', (e) => {

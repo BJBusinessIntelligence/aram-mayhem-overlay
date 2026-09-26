@@ -43,6 +43,29 @@ build rather than a Mayhem one. It's a fallback for when aramkit is unreachable,
   spells, skill order. Other archetypes under "Other builds".
 - Search box previews any champion; "Live" returns to the detected one. ↻ re-fetches.
 
+## Live augment offers (Windows)
+
+While you are in a game the overlay captures the League window with Windows' built-in OCR
+(about 4 frames/s while an offer is on screen, one every 1.5 s otherwise) and reads the three
+augment card titles. When two consecutive frames agree, the page switches to three cards:
+
+- **PICK** — the best card by tier, then win rate.
+- **REROLL** — cards with C/D tier or negative lift; if even the best is weak, "Reroll all".
+- **KEEP** — fine, but not the pick.
+
+The list returns when the cards disappear. Press Esc or "Show list" to dismiss early.
+Requirements: League in **Borderless** (or Windowed) mode; English client. Nothing is clicked
+or sent to the game — capture only.
+
+Options: `OCR_ENABLED=false` / `--ocr=false` turns it off; `OCR_IDLE_MS`, `OCR_ACTIVE_MS`,
+`OCR_REGION=band|full`, `--ocr-debug` (saves frames that produced an offer to `data/debug/`).
+Runtime toggle: `POST /api/ocr {"enabled":false}`.
+
+Calibration / troubleshooting: `node scripts/ocr-capture.js --full --save data/debug/f.png`
+prints every line the OCR sees with coordinates. During an augment screen, run
+`curl -X POST localhost:3777/api/ocr/capture -d "{\"save\":true}"` to store the frame and
+its match result under `data/debug/` — attach these when reporting a missed offer.
+
 ## Manual smoke checklist
 
 1. `node src/main.js` with League closed: page says "Waiting for League…", search works.

@@ -24,12 +24,14 @@ test('meta and champion', () => {
 
 test('augments.all joined with names, rarity, icon', () => {
   assert.equal(data.augments.all.length, 126);
-  const mp = data.augments.all.find((a) => a.id === 1058);
-  assert.deepEqual(mp, {
+  const { description, ...rest } = data.augments.all.find((a) => a.id === 1058);
+  assert.deepEqual(rest, {
     id: 1058, name: 'Mystic Punch', rarity: 'prismatic', tier: 'S', rank: 1,
     winRate: 0.6517, pickRate: 0.1477, games: 112923, globalWinRate: 0.5128,
     icon: 'https://data.aramkit.com/assets/augment/1058-9450203898b2.webp',
   });
+  assert.equal(typeof description, 'string');
+  assert.ok(description.length > 20);
   const rarities = new Set(data.augments.all.map((a) => a.rarity));
   assert.deepEqual([...rarities].sort(), ['gold', 'prismatic', 'silver']);
 });
@@ -77,6 +79,7 @@ test('unknown resource ids degrade to placeholders', () => {
   assert.equal(mp.name, '#1058');
   assert.equal(mp.rarity, 'unknown');
   assert.equal(mp.icon, null);
+  assert.equal(mp.description, null);
   assert.equal(d.build.archetypes[0].name, 'crit');
   assert.equal(d.build.archetypes[0].core[0].name, '#3032');
   assert.deepEqual(d.summoners[0].names, ['#4', '#32']);

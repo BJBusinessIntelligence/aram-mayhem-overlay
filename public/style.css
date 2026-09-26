@@ -50,3 +50,24 @@ h2.prismatic { color: var(--prismatic); } h2.gold { color: var(--gold); } h2.sil
 .alts { margin-top: 10px; color: var(--muted); font-size: 14px; }
 .alts summary { cursor: pointer; }
 .muted { color: var(--muted); }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #2c343f; color: var(--muted); }
+.chip.on { color: var(--good); } .chip.err { color: var(--bad); }
+#offer { padding: 12px 14px; }
+.offer-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+#offer-title { font-size: 20px; font-weight: 700; }
+.offer-note { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: #4a3a1f; color: #ffe2a8; font-weight: 600; }
+.offer-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.card { position: relative; border-radius: 14px; padding: 18px 16px 16px; background: linear-gradient(180deg, #1b2129, #12161c); border: 3px solid var(--silver); min-height: 420px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.card.gold { border-color: var(--gold); }
+.card.prismatic { border-image: linear-gradient(135deg, #7fe3ff, #c86bff, #7fe3ff) 1; }
+.card.pick { box-shadow: 0 0 0 3px #fff, 0 0 28px rgba(79, 209, 139, .6); }
+.card.reroll { opacity: .78; }
+.card.unread { border-style: dashed; opacity: .6; }
+.card img.icon { width: 96px; height: 96px; border-radius: 12px; margin: 6px 0 10px; }
+.card .name { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+.card .desc { color: var(--muted); font-size: 14px; line-height: 1.35; max-height: 7.5em; overflow: hidden; }
+.card .stats { margin-top: auto; padding-top: 12px; font-size: 15px; display: flex; gap: 10px; align-items: center; }
+.card .stats .wr { font-size: 22px; font-weight: 800; }
+.ribbon { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); padding: 4px 14px; border-radius: 8px; font-weight: 800; letter-spacing: .06em; }
+.ribbon.pick { background: var(--good); color: #062; } .ribbon.reroll { background: var(--bad); color: #fff; } .ribbon.keep { background: #2c343f; color: var(--muted); } .ribbon.unread { background: #2c343f; color: var(--muted); }
+.card .ocr { margin-top: 6px; font-size: 12px; color: var(--muted); }
