@@ -54,3 +54,11 @@ test('lift is null without globalWinRate; unknown rarity goes to unknown', () =>
 test('compareRows is a valid comparator for equal rows', () => {
   assert.equal(compareRows(row(), row()), 0);
 });
+
+test('null games is not a low sample (blitz fallback has no per-augment counts)', () => {
+  const out = shapeAugments(synthetic([row({ games: null }), row({ id: 2, games: 5 })]), { stage: 'all', minGames: 200 });
+  const nullGames = out.columns.gold.find((r) => r.id === 1);
+  const fewGames = out.columns.gold.find((r) => r.id === 2);
+  assert.equal(nullGames.lowSample, false);
+  assert.equal(fewGames.lowSample, true);
+});

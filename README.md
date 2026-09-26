@@ -4,7 +4,8 @@ Local page for a second monitor: detects your League of Legends champion (champ 
 in game via Live Client Data) and shows ARAM Mayhem augment win rates per rarity, auto-switched
 to the current augment stage (levels 3 / 7 / 11 / 15), plus a high-win-rate build.
 
-Data: [aramkit.com](https://aramkit.com) public JSON (primary). Not endorsed by Riot Games.
+Data: [aramkit.com](https://aramkit.com) public JSON (primary), [Blitz.gg](https://blitz.gg) +
+[CommunityDragon](https://communitydragon.org) (keyless fallback). Not endorsed by Riot Games.
 
 ## Run
 
@@ -24,9 +25,14 @@ not an in-game overlay. Nothing is written to the League client.
 | `CACHE_DIR` / `--cache-dir` | `data/cache` | Disk cache |
 | `CACHE_TTL_H` / `--cache-ttl-h` | 24 | Hours before champion data is re-fetched |
 | `LOL_LOCKFILE` / `--lockfile` | `C:\Riot Games\League of Legends\lockfile` | LCU lockfile |
-| `PRIMARY_SOURCE` / `--primary` | `aramkit` | `aramkit` |
+| `PRIMARY_SOURCE` / `--primary` | `aramkit` | `aramkit` or `blitz` |
 | `--open` | off | Open the browser after start |
 | page `?noicons=1` | | Hide item/augment icons |
+
+Blitz needs no key and is CORS-open, but it only has **tiers (S–D), not win/pick rates**, and its
+builds come from regular ARAM (queue 450), not ARAM Mayhem specifically — augment and champion
+win rate, pick rate and games all read `null` (shown as "–"), and the shown build is a general-ARAM
+build rather than a Mayhem one. It's a fallback for when aramkit is unreachable, not a replacement.
 
 ## Page
 
@@ -50,9 +56,9 @@ not an in-game overlay. Nothing is written to the League client.
 ## Layout
 
     src/config.js       env/argv
-    src/data/           cache, repository, champion index, aramkit adapter
+    src/data/           cache, repository, champion index, aramkit + blitz adapters, cdragon resources
     src/rank/           augment ranking, build selection (pure)
     src/game/           lockfile, lcu, liveclient, detector
     src/server/         state store, http routes
     public/             page
-    test/               node:test suites + fixtures (aramkit fixtures are real captures)
+    test/               node:test suites + fixtures (aramkit/blitz/cdragon fixtures are real captures)

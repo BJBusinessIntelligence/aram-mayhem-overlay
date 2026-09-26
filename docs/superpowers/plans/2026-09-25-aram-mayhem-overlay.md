@@ -25,6 +25,7 @@
 - Fixtures in `test/fixtures/aramkit/` are real captures (2026-09-25, aramkit data 16.19). Do not edit them.
 - Deviation from spec §7.6 (recorded here so nobody "fixes" it): cache keys do **not** contain the data version and there is no prune step. Freshness = TTL ok **and** cached `sourceVersion` equals the adapter's current version. Simpler, same behavior.
 - Additive deviations from the spec, all used by the page: `POST /api/refresh`; `/api/champions` also returns `slug` and `icon`; `view.stageUsed` in the payload; `error` field on `GameState`.
+- 2026-09-26: aramgg fallback replaced by Blitz (keyless tiers) + CommunityDragon resources.
 
 ## File Structure
 

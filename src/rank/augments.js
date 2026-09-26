@@ -29,7 +29,7 @@ export function shapeAugments(champData, { stage = 'auto', level = null, minGame
   const unknown = [];
   for (const r of rows) {
     const lift = r.globalWinRate == null || r.winRate == null ? null : r.winRate - r.globalWinRate;
-    const shaped = { ...r, lift, lowSample: (r.games ?? 0) < minGames };
+    const shaped = { ...r, lift, lowSample: typeof r.games === 'number' && r.games < minGames };
     (columns[shaped.rarity] ?? unknown).push(shaped);
   }
   for (const r of RARITIES) columns[r].sort(compareRows);
