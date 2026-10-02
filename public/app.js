@@ -129,12 +129,13 @@ function renderRecommend(r, g) {
   $('#rec-cards').innerHTML = r.candidates.map((c) => {
     const comp = c.components ?? {};
     const title = `strength ${Math.round((comp.strength ?? 0) * 100)} · fit ${Math.round((comp.fit ?? 0) * 100)} · synergy ${Math.round((comp.synergy ?? 0) * 100)}`;
+    const score = Math.max(0, Math.min(100, Math.round(Number(c.score) || 0)));
     return `<div class="rec-card${c.held ? ' held' : ''}">
       ${img(c.icon, 'icon')}
       <div class="body">
         <div class="name">${esc(c.name)} <span class="tier ${esc(c.tier ?? '')}">${esc(c.tier ?? '·')}</span> <span class="muted">${pct(c.winRate)} · ${kfmt(c.games)}</span>
           <span class="chip ${c.held ? 'on' : ''}">${c.held ? 'HELD' : 'bench'}</span> <span class="chip conf-${esc(c.confidence)}">${esc(c.confidence)}</span></div>
-        <div class="bar" title="${esc(title)}"><div class="fill" style="width:${c.score}%"></div><span class="num">${c.score}</span></div>
+        <div class="bar" title="${esc(title)}"><div class="fill" style="width:${score}%"></div><span class="num">${score}</span></div>
         <div class="reasons">${(c.reasons ?? []).map((t) => `<span class="reason">${esc(t)}</span>`).join('')}</div>
         ${(c.warnings ?? []).length ? `<div class="muted small">${esc(c.warnings.join(' · '))}</div>` : ''}
       </div>
@@ -182,7 +183,8 @@ function renderBuild(b) {
   if (!b) return '<div class="muted">–</div>';
   const p = b.primary;
   const ctx = b.context === 'both' ? '<span class="chip on">Full matchup</span>' : b.context === 'allies' ? '<span class="chip">Allies only</span>' : '';
-  const swap = p.contextReason ? `<div class="swap">${esc(p.name)} chosen · ${p.contextDelta >= 0 ? '+' : ''}${p.contextDelta} pp est. · ${esc(p.contextReason)}</div>` : '';
+  const delta = Number(p.contextDelta) || 0;
+  const swap = p.contextReason ? `<div class="swap">${esc(p.name)} chosen · ${delta >= 0 ? '+' : ''}${delta} pp est. · ${esc(p.contextReason)}</div>` : '';
   const alts = b.alternatives.length
     ? `<details class="alts"><summary>Other builds (${b.alternatives.length})</summary>${b.alternatives.map((a) => `<div>${esc(a.name)} · ${pct(a.winRate)} WR · ${pct(a.pickRate, 0)} pick · ${kfmt(a.games)}</div>`).join('')}</details>`
     : '';
