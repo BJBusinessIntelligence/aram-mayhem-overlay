@@ -86,3 +86,9 @@ test('a failed request does not block the next one', async () => {
   await assert.rejects(client.fetchJson('https://data.aramkit.com/missing.json'));
   assert.deepEqual(await client.resource('items', entry), { a: 1 });
 });
+
+test('rankings and averages urls', () => {
+  const u = aramkitUrls({ dataPath: 'data/v', resourcePath: 'resources/r' });
+  assert.equal(u.rankings('all'), 'https://data.aramkit.com/data/v/stats/all/champion-rankings.json');
+  assert.equal(u.averages('high'), 'https://data.aramkit.com/data/v/stats/high/champion-performance-averages.json');
+});

@@ -11,12 +11,14 @@ const res = aramkitResources();
 const RESOURCE_FILES = { champions: res.champions, augments: res.augments, items: res.items, 'summoner-spells': res.spells, archetypes: res.archetypes };
 
 function fakeClient() {
-  const calls = { latestVersion: 0, champion: [], resource: [] };
+  const calls = { latestVersion: 0, champion: [], resource: [], rankings: 0, averages: 0 };
   return {
     calls,
     async latestVersion() { calls.latestVersion++; return versions.versions[0]; },
     async champion(id, bracket) { calls.champion.push([id, bracket]); if (id !== 157) throw new Error('no such champ'); return champ157; },
     async resource(name) { calls.resource.push(name); return RESOURCE_FILES[name]; },
+    async rankings(bracket) { calls.rankings = (calls.rankings ?? 0) + 1; return fixture('aramkit', 'champion-rankings-all.json'); },
+    async averages(bracket) { calls.averages = (calls.averages ?? 0) + 1; return fixture('aramkit', 'champion-performance-averages-all.json'); },
   };
 }
 
@@ -79,4 +81,25 @@ test('championIndex is built from resources', async () => {
 test('client errors propagate', async () => {
   const { adapter } = setup();
   await assert.rejects(adapter.champion(1, 'all'), /no such champ/);
+});
+
+test('rankings: map by id, cached per version, one fetch', async () => {
+  const { adapter, client, fs } = setup();
+  const r = await adapter.rankings('all');
+  assert.equal(r.version, versions.versions[0].version);
+  assert.deepEqual(r.byId[157], { id: 157, rank: 1, tier: 'S', winRate: 0.5764, pickRate: 0.1083, games: 804398 });
+  await adapter.rankings('all');
+  assert.equal(client.calls.rankings, 1);
+  assert.ok([...fs.files.keys()].some((k) => k.endsWith('champion-rankings.json')));
+  const client2 = fakeClient();
+  const again = createAramkitAdapter({ client: client2, cache: createCache({ dir: 'cache', ttlMs: 3600_000, fs, now: () => 1_000_000 }), now: () => 1_000_000 });
+  await again.rankings('all');
+  assert.equal(client2.calls.rankings, 0, 'the second adapter instance reads the disk cache: no new rankings fetch on its own client');
+});
+
+test('averages: combat shape', async () => {
+  const { adapter } = setup();
+  const a = await adapter.averages('all');
+  assert.equal(a.combat.damageSelfMitigated, 46272.043);
+  assert.equal(a.combat.healsOnTeammates, 479.216);
 });

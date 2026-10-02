@@ -10,6 +10,16 @@ export function flattenTooltip(tooltip) {
   return text.length ? text : null;
 }
 
+export function combatFromAverages(a) {
+  if (!a || typeof a !== 'object') return null;
+  return {
+    physicalDamage: num(a.physicalDamageToChampions), magicDamage: num(a.magicDamageToChampions), trueDamage: num(a.trueDamageToChampions),
+    damageTaken: num(a.damageTaken), damageSelfMitigated: num(a.damageSelfMitigated),
+    healsOnTeammates: num(a.healsOnTeammates), damageShieldedOnTeammates: num(a.damageShieldedOnTeammates),
+    timeCcingOthers: num(a.timeCcingOthers), damageShare: num(a.damageShare),
+  };
+}
+
 export function normalizeAramkit(raw, resources, meta) {
   const { champions = {}, augments = {}, items = {}, spells = {}, archetypes = {} } = resources ?? {};
   const iconBase = meta?.iconBase ?? 'https://data.aramkit.com/';
@@ -57,6 +67,12 @@ export function normalizeAramkit(raw, resources, meta) {
     });
   }
 
+  const st = champRaw.stats;
+  const combat = st && typeof st === 'object' ? combatFromAverages(st) : null;
+  const itemRows = (raw.items?.filtered?.all ?? [])
+    .filter((i) => i && i.id != null)
+    .map((i) => ({ ...item({ id: i.id }), winRate: num(i.winRate), pickRate: num(i.pickRate), games: i.sampleCount ?? 0 }));
+
   return {
     source: 'aramkit',
     sourceVersion: meta.version,
@@ -73,6 +89,7 @@ export function normalizeAramkit(raw, resources, meta) {
       pickRate: num(champRaw.stats?.pickRate),
       games: champRaw.stats?.sampleCount ?? 0,
       icon: icon(champRes.icon),
+      combat,
     },
     augments: { all: allRaw.map(augRow), stages },
     build: { archetypes: archetypeRows },
@@ -81,5 +98,6 @@ export function normalizeAramkit(raw, resources, meta) {
       return { spellIds: ids, names: ids.map((id) => spells[id]?.name ?? `#${id}`), ...stat(s) };
     }),
     skills: (raw.skills ?? []).map((s) => ({ order: s.order, ...stat(s) })),
+    items: itemRows,
   };
 }

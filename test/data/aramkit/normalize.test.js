@@ -19,6 +19,10 @@ test('meta and champion', () => {
     id: 157, riotId: 'Yasuo', name: 'Yasuo', tier: 'S', rank: 1,
     winRate: 0.5764, pickRate: 0.1083, games: 804398,
     icon: 'https://data.aramkit.com/assets/champion/157-617df344cd83.webp',
+    combat: {
+      physicalDamage: 35093, magicDamage: 5058, trueDamage: 2087, damageTaken: 37193, damageSelfMitigated: 74028,
+      healsOnTeammates: 1, damageShieldedOnTeammates: 0, timeCcingOthers: 29.3, damageShare: 0.2061,
+    },
   });
 });
 
@@ -98,4 +102,29 @@ test('missing optional sections give empty arrays', () => {
   assert.deepEqual(d.augments.stages, { 1: [], 2: [], 3: [], 4: [] });
   assert.equal(d.augments.all[0].games, 0);
   assert.equal(d.augments.all[0].globalWinRate, null);
+});
+
+test('champion.combat carries the stats the profile rules need', () => {
+  const c = normalizeAramkit(fixture('aramkit', 'champion-details-157-all.json'), aramkitResources(), { version: '16.19', bracket: 'all', fetchedAt: 0 }).champion.combat;
+  assert.deepEqual(c, {
+    physicalDamage: 35093, magicDamage: 5058, trueDamage: 2087, damageTaken: 37193, damageSelfMitigated: 74028,
+    healsOnTeammates: 1, damageShieldedOnTeammates: 0, timeCcingOthers: 29.3, damageShare: 0.2061,
+  });
+});
+
+test('items come from items.filtered.all with names and icons', () => {
+  const d = normalizeAramkit(fixture('aramkit', 'champion-details-157-all.json'), aramkitResources(), { version: '16.19', bracket: 'all', fetchedAt: 0 });
+  assert.ok(d.items.length > 5);
+  const boots = d.items.find((i) => i.id === 3006);
+  assert.equal(boots.name, "Berserker's Greaves");
+  assert.equal(typeof boots.winRate, 'number');
+  assert.equal(typeof boots.pickRate, 'number');
+  assert.ok(boots.games > 0);
+});
+
+test('missing stats/items → combat null and items empty', () => {
+  const raw = { champion: { id: 1 }, augments: { all: [{ id: 1058 }] } };
+  const d = normalizeAramkit(raw, aramkitResources(), { version: 'x', bracket: 'all', fetchedAt: 0 });
+  assert.equal(d.champion.combat, null);
+  assert.deepEqual(d.items, []);
 });

@@ -10,6 +10,8 @@ export function aramkitUrls(entry) {
     champion: (id, bracket) => `${ARAMKIT_BASE}/${entry.dataPath}/stats/${bracket}/champion-details/${id}.json`,
     resource: (name) => `${ARAMKIT_BASE}/${entry.resourcePath}/en-US/resources/${name}.json`,
     icon: (p) => (p ? `${ARAMKIT_BASE}/${p}` : null),
+    rankings: (bracket) => `${ARAMKIT_BASE}/${entry.dataPath}/stats/${bracket}/champion-rankings.json`,
+    averages: (bracket) => `${ARAMKIT_BASE}/${entry.dataPath}/stats/${bracket}/champion-performance-averages.json`,
   };
 }
 
@@ -52,5 +54,7 @@ export function createAramkitClient({
     latestVersion: async () => pickLatest(await fetchJson(VERSIONS_URL)),
     champion: (id, bracket, entry) => fetchJson(aramkitUrls(entry).champion(id, bracket)),
     resource: (name, entry) => fetchJson(aramkitUrls(entry).resource(name)),
+    rankings: (bracket, entry) => fetchJson(aramkitUrls(entry).rankings(bracket)),
+    averages: (bracket, entry) => fetchJson(aramkitUrls(entry).averages(bracket)),
   };
 }

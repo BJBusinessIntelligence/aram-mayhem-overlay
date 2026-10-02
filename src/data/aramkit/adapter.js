@@ -1,5 +1,5 @@
 import { createChampionIndex } from '../champions.js';
-import { normalizeAramkit } from './normalize.js';
+import { normalizeAramkit, combatFromAverages } from './normalize.js';
 import { ARAMKIT_BASE } from './client.js';
 
 // ChampData resource field → aramkit resource file name
@@ -43,6 +43,22 @@ export function createAramkitAdapter({ client, cache, now = Date.now, versionTtl
     return data;
   }
 
+  // Version-keyed single-file caches (rankings, averages): one fetch per data version per bracket.
+  const fileMemo = new Map(); // key → { version, data }
+  async function versionedFile(name, bracket, fetcher, shape) {
+    const e = await versionEntry();
+    const key = ['aramkit', bracket, name];
+    const memo = fileMemo.get(key.join('/'));
+    if (memo && memo.version === e.version) return memo.data;
+    const hit = await cache.get(key);
+    if (hit && hit.value && hit.value.version === e.version) { fileMemo.set(key.join('/'), hit.value); return hit.value.data; }
+    const raw = await fetcher(bracket, e);
+    const data = shape(raw, e.version);
+    await cache.set(key, { version: e.version, data });
+    fileMemo.set(key.join('/'), { version: e.version, data });
+    return data;
+  }
+
   return {
     name: 'aramkit',
     enabled: true,
@@ -61,5 +77,14 @@ export function createAramkitAdapter({ client, cache, now = Date.now, versionTtl
     async championIndex() {
       return createChampionIndex((await resources()).champions);
     },
+    rankings: (bracket = 'all') => versionedFile('champion-rankings', bracket, client.rankings, (raw, version) => ({
+      version,
+      byId: Object.fromEntries((raw?.rows ?? []).filter((r) => Number.isInteger(r.id)).map((r) => [r.id, {
+        id: r.id, rank: r.rank ?? null, tier: r.tier ?? null, winRate: r.winRate ?? null, pickRate: r.pickRate ?? null, games: r.sampleCount ?? 0,
+      }])),
+    })),
+    averages: (bracket = 'all') => versionedFile('champion-performance-averages', bracket, client.averages, (raw, version) => ({
+      version, combat: combatFromAverages(raw?.averages),
+    })),
   };
 }
