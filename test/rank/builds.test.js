@@ -69,6 +69,22 @@ test('allies only: a frontline need can promote bruiser within the cap; swap is 
   // frontline already covered → no modifier
   const covered = [prof(1, { frontline: 1 }), prof(2), prof(3), prof(4)];
   assert.equal(pickBuild(d, { context: { allies: covered, enemies: null, itemCategories: {} } }).primary.key, 'crit');
+  // minPick: 0 must not let a below-pick-floor archetype overtake the plain primary
+  assert.equal(pickBuild(rare, { minPick: 0, context: { allies: squishy(), enemies: null, itemCategories: {} } }).primary.key, 'crit');
+  // an unmapped archetype key cannot overtake the higher-winRate primary: no "team lacks undefined"
+  const weird = { build: { archetypes: [arch({ key: 'crit', winRate: 0.61, pickRate: 0.6 }), arch({ key: 'weird', winRate: 0.60, pickRate: 0.3 })] }, summoners: [], skills: [], items: [] };
+  const w = pickBuild(weird, { context: { allies: squishy(), enemies: null, itemCategories: {} } });
+  assert.equal(w.primary.key, 'crit');
+  assert.equal(w.primary.contextDelta, null);
+  assert.equal(w.primary.contextReason, null);
+  // regression: a low-pickRate, high-winRate plain must not be excluded from the overtake pool
+  // (minPick: 0 makes it "plain"), letting a merely-qualifying unmapped archetype steal the slot
+  // with a null need ("team lacks undefined")
+  const exploit = { build: { archetypes: [arch({ key: 'tank', winRate: 0.70, pickRate: 0.01 }), arch({ key: 'weird', winRate: 0.55, pickRate: 0.3 })] }, summoners: [], skills: [], items: [] };
+  const e = pickBuild(exploit, { minPick: 0, context: { allies: squishy(), enemies: null, itemCategories: {} } });
+  assert.equal(e.primary.key, 'tank');
+  assert.equal(e.primary.contextDelta, null);
+  assert.equal(e.primary.contextReason, null);
 });
 
 test('both teams: situational items ranked by threat-matching categories, core excluded, max 3', () => {

@@ -38,7 +38,9 @@ function chooseArchetype(archetypes, minPick, context, weights) {
   if (!context || !Array.isArray(context.allies) || context.allies.length === 0 || !plain) return { primary: plain, contextDelta: null, contextReason: null };
   const unmet = unmetNeeds(context.allies);
   const adjusted = (a) => (a.winRate ?? 0) + archetypeModifier(a.key, unmet, weights).pp / 100;
-  const pool = archetypes.filter((a) => (a.pickRate ?? 0) >= weights.archetypeMinPick);
+  // Only an archetype that clears the pick floor and earns a positive modifier (a mapped, unmet need)
+  // may overtake the plain primary; this also guarantees the eventual winner's `need` is never null.
+  const pool = [plain, ...archetypes.filter((a) => a !== plain && (a.pickRate ?? 0) >= weights.archetypeMinPick && archetypeModifier(a.key, unmet, weights).pp > 0)];
   const winner = pool.slice().sort((a, b) => adjusted(b) - adjusted(a))[0] ?? plain;
   if (winner === plain) return { primary: plain, contextDelta: null, contextReason: null };
   const mod = archetypeModifier(winner.key, unmet, weights);
