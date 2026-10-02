@@ -1,0 +1,11 @@
+[
+  { "a": "Yasuo", "b": "Malphite", "delta": 0.5, "reason": "knock-up for Last Breath" },
+  { "a": "Yasuo", "b": "Alistar", "delta": 0.4, "reason": "knock-up for Last Breath" },
+  { "a": "Yasuo", "b": "Nautilus", "delta": 0.3, "reason": "knock-up for Last Breath" },
+  { "a": "Yone", "b": "Malphite", "delta": 0.3, "reason": "wombo follow-up" },
+  { "a": "Kalista", "b": "Leona", "delta": 0.3, "reason": "Fate's Call engage" },
+  { "a": "Lucian", "b": "Braum", "delta": 0.3, "reason": "Vulnerable passive procs" },
+  { "a": "Xayah", "b": "Rakan", "delta": 0.4, "reason": "lovers' recall + engage" },
+  { "a": "Twitch", "b": "Lulu", "delta": 0.3, "reason": "hypercarry enabling" },
+  { "a": "Master Yi", "b": "Taric", "delta": 0.3, "reason": "invulnerability window" }
+]
