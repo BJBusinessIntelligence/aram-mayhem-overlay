@@ -73,6 +73,20 @@ test('debug dump writes recommend-<ts>.json and prunes', async () => {
   const path = await import('node:path');
   const rec = createRecommender({ ...deps(), debugDir: 'data/debug', autoDump: true, fs, path, now: () => 3, maxDumps: 2 });
   await rec.compute({ held: 157, bench: [], allies: [], enemies: [], bracket: 'all' });
-  assert.ok(writes[0].endsWith('recommend-3.json'));
+  assert.match(writes[0], /recommend-3-1.json$/);
   assert.ok(rms.some((p) => p.endsWith('recommend-1.json')));
+});
+
+test('two computes finishing in the same millisecond get distinct dump files', async () => {
+  const writes = [];
+  const fs = { mkdir: async () => {}, writeFile: async (p) => writes.push(p), readdir: async () => [], rm: async () => {} };
+  const path = await import('node:path');
+  const rec = createRecommender({ ...deps(), debugDir: 'data/debug', autoDump: true, fs, path, now: () => 7 });
+  await Promise.all([
+    rec.compute({ held: 157, bench: [], allies: [], enemies: [], bracket: 'all' }),
+    rec.compute({ held: 99, bench: [], allies: [], enemies: [], bracket: 'all' }),
+  ]);
+  assert.equal(writes.length, 2);
+  assert.notEqual(writes[0], writes[1], 'same timestamp must not collide');
+  assert.ok(writes.every((p) => /recommend-7-\d+\.json$/.test(p)));
 });

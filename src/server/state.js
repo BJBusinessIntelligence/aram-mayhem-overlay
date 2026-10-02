@@ -68,8 +68,9 @@ export function createAppState({ repository, recommender = null, now = Date.now,
     const superseded = () => seq !== recSeq || game.lineupRev !== rev;
     try {
       const r = await recommender.compute({ ...g.lineup, bracket: view.bracket });
-      if (superseded()) return;
+      if (superseded()) { log(`[recommend] dropped rev ${rev} (superseded)`); return; }
       recommend = { rev, ...r.recommend };
+      log(`[recommend] stored rev ${rev}: ${r.recommend.context}, ${r.recommend.candidates.length} candidates, ${r.profiles.allies.length} allies`);
       buildContext = { allies: r.profiles.allies, enemies: g.phase === 'ingame' ? r.profiles.enemies : null, itemCategories: r.itemCategories };
       for (const w of r.recommend.warnings ?? []) log(`[recommend] ${w}`);
     } catch (e) {

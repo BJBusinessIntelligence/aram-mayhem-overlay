@@ -13,6 +13,7 @@ export function createRecommender({
   overrides = {}, synergyRules = [], weights = WEIGHTS,
   debugDir = null, autoDump = false, fs = null, path = null, maxDumps = 50, now = Date.now, log = () => {},
 }) {
+  let dumpSeq = 0; // two computes can finish in the same millisecond; the sequence keeps file names unique
   async function settle(p) { try { return { ok: true, value: await p }; } catch (e) { return { ok: false, error: e }; } }
 
   async function compute({ held = null, bench = [], allies = [], enemies = [], bracket = 'all' }) {
@@ -59,7 +60,7 @@ export function createRecommender({
     if (autoDump && debugDir && fs && path) {
       try {
         await fs.mkdir(debugDir, { recursive: true });
-        await fs.writeFile(path.resolve(debugDir, `recommend-${now()}.json`), JSON.stringify({ input: { held, bench, allies, enemies, bracket }, profiles, recommend: result.recommend }, null, 2));
+        await fs.writeFile(path.resolve(debugDir, `recommend-${now()}-${++dumpSeq}.json`), JSON.stringify({ input: { held, bench, allies, enemies, bracket }, profiles, recommend: result.recommend }, null, 2));
         await pruneDumps(fs, path, debugDir, 'recommend-', maxDumps);
       } catch (e) { log(`[recommend] debug dump failed: ${e.message}`); }
     }
