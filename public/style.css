@@ -95,3 +95,5 @@ h2.prismatic { color: var(--prismatic); } h2.gold { color: var(--gold); } h2.sil
 .reason { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--panel2); }
 .small { font-size: 12px; }
 .chip.conf-high { color: var(--good); } .chip.conf-medium { color: var(--warn); } .chip.conf-low { color: var(--bad); }
+.swap { margin: 4px 0 2px; font-size: 13px; color: var(--warn); }
+.item .why { font-size: 11px; color: var(--muted); margin-left: 4px; }

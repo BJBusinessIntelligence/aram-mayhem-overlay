@@ -181,15 +181,21 @@ const itemList = (items, sep = '') => items.map((i) => `<span class="item">${img
 function renderBuild(b) {
   if (!b) return '<div class="muted">–</div>';
   const p = b.primary;
+  const ctx = b.context === 'both' ? '<span class="chip on">Full matchup</span>' : b.context === 'allies' ? '<span class="chip">Allies only</span>' : '';
+  const swap = p.contextReason ? `<div class="swap">${esc(p.name)} chosen · ${p.contextDelta >= 0 ? '+' : ''}${p.contextDelta} pp est. · ${esc(p.contextReason)}</div>` : '';
   const alts = b.alternatives.length
     ? `<details class="alts"><summary>Other builds (${b.alternatives.length})</summary>${b.alternatives.map((a) => `<div>${esc(a.name)} · ${pct(a.winRate)} WR · ${pct(a.pickRate, 0)} pick · ${kfmt(a.games)}</div>`).join('')}</details>`
     : '';
-  return `<div><strong>${esc(p.name)}</strong> <span class="muted">${pct(p.winRate)} WR · ${pct(p.pickRate, 0)} pick · ${kfmt(p.games)} games</span></div>
+  const situational = (b.situational ?? []).length
+    ? `<dt>Situational</dt><dd class="items">${b.situational.map((s) => `<span class="item" title="${esc(s.reason)} · ${pct(s.winRate)} WR · pick ${pct(s.pickRate, 0)}">${img(s.item.icon)}${esc(s.item.name)}<span class="why">${esc(s.reason)}</span></span>`).join('')}</dd>`
+    : '';
+  return `<div><strong>${esc(p.name)}</strong> <span class="muted">${pct(p.winRate)} WR · ${pct(p.pickRate, 0)} pick · ${kfmt(p.games)} games</span> ${ctx}</div>${swap}
   <dl>
     <dt>Start</dt><dd class="items">${itemList(p.starter) || '–'}</dd>
     <dt>Boots</dt><dd class="items">${p.boots ? itemList([p.boots]) : '–'}</dd>
     <dt>Core (route ${pct(p.routeWinRate)} WR)</dt><dd class="items">${itemList(p.core, '›') || '–'}</dd>
     <dt>Later</dt><dd class="items">${itemList(p.later) || '–'}</dd>
+    ${situational}
     <dt>Spells</dt><dd>${esc(p.spells.join(' + ')) || '–'}</dd>
     <dt>Skills</dt><dd>${esc(p.skillOrder ?? '–')}</dd>
   </dl>${alts}`;
