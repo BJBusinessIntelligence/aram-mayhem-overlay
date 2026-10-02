@@ -113,6 +113,35 @@ powershell -NoProfile -File test/ocr/native-capture.test.ps1
 The capture implementation follows Microsoft's [HDR capture guidance](https://learn.microsoft.com/en-us/windows/apps/develop/media-authoring-processing/screen-capture)
 and [DuplicateOutput1 format contract](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_5/nf-dxgi1_5-idxgioutput5-duplicateoutput1).
 
+## Champ-select recommender and adaptive builds
+
+During ARAM Mayhem champ select the page shows a **Champ select** panel ranking your held
+champion and every bench champion for *this* team: 60 % individual Mayhem strength (win rate
+shrunk by sample size, percentile among all champions), 30 % composition fit (what the pick adds
+in frontline, engage, peel, sustain, crowd control, poke and physical/magic balance), 10 % synergy
+(rule-based plus a small curated pair list — no source publishes champion-pair statistics).
+Each card shows a 0-100 score (hover for the three components), a confidence chip and two or three
+plain-language reasons. Advisory only: nothing is swapped or clicked.
+
+Builds adapt twice: in champ select the archetype may shift by at most 3 win-rate points to cover
+an allied gap ("Allies only" chip); once the game runs and enemies are known, a **Situational** row
+lists up to three items from your champion's own win-rate table that answer the enemy lineup
+("Full matchup" chip). Core items never change.
+
+Trait profiles are derived from CommunityDragon playstyle data and aramkit combat stats; rule
+misses are patched in `data/profile-overrides.json` (keyed by riot id, traits 0..1). Curated pairs
+live in `data/synergy-rules.json`. Weights and caps: `src/rank/weights.js`.
+
+Try a lineup without a game: **Lineup…** in the header, or
+
+```powershell
+curl.exe -s -X POST localhost:3777/api/recommend/preview -H "content-type: application/json" -d "{\"held\":\"Yasuo\",\"bench\":[\"Lux\",\"Malphite\"],\"allies\":[\"Annie\",\"Wukong\",\"Morgana\",\"Ahri\"],\"enemies\":[]}"
+```
+
+Tuning: run one game with `node src/main.js --rec-debug` (or `REC_DEBUG=true`); every recompute is
+saved as `data/debug/recommend-<ts>.json` (newest 50) with the lineup, profiles and scores. Capture
+a real champ-select session for fixtures with `node scripts/lcu-dump.js` during champ select.
+
 ## Manual smoke checklist
 
 1. `node src/main.js` with League closed: page says "Waiting for League…", search works.
@@ -122,6 +151,12 @@ and [DuplicateOutput1 format contract](https://learn.microsoft.com/en-us/windows
 5. In game: level shown, Auto tab shows stage 1; passes (2) at level 7, (3) at 11, (4) at 15.
 6. Toggle High MMR: header meta shows `bracket high` after a short load.
 7. After the game: "Not in game", last champion still shown.
+8. Champ select: panel appears within one poll of entering champ select; held card marked HELD; a
+   bench swap reorders the cards; Hide dismisses until the lineup changes.
+9. Loading screen: panel gone, build keeps the "Allies only" chip.
+10. In game: build shows "Full matchup" and a Situational row with reasons; augment list unchanged.
+11. Lineup… form: unknown names produce a banner error; a valid lineup renders a "Lineup preview"
+    panel and preview build; Live/new game clears it.
 
 ## Layout
 
