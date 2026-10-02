@@ -98,8 +98,10 @@ function renderOcrChip(o) {
   if (!o) { el.hidden = true; return; }
   el.hidden = false;
   if (!o.enabled) { el.textContent = 'OCR off'; el.className = 'chip'; return; }
+  el.title = o.lastWarning ?? '';
   if (o.lastError) { el.textContent = `OCR: ${o.lastError}`; el.className = 'chip err'; return; }
-  el.textContent = o.running ? `OCR on${o.lastCaptureMs != null ? ` · ${o.lastCaptureMs} ms` : ''}` : 'OCR idle';
+  if (o.lastWarning) { el.textContent = 'OCR · HDR capture limited'; el.className = 'chip err'; return; }
+  el.textContent = o.running ? `OCR on${o.hdr === true ? ' · HDR' : ''}${o.lastCaptureMs != null ? ` · ${o.lastCaptureMs} ms` : ''}` : 'OCR idle';
   el.className = 'chip on';
 }
 

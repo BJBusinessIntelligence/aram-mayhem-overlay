@@ -163,3 +163,22 @@ test('stop() settles an in-flight request immediately', async () => {
   assert.equal(r.error, 'stopped');
   assert.ok(elapsed < 200, `expected < 200ms, got ${elapsed}ms`);
 });
+
+test('capture preserves HDR diagnostics and replay coordinates', async () => {
+  let request;
+  const color = { backend: 'dxgi', hdr: true, pixelFormat: 'R16G16B16A16_FLOAT', toneMap: 'reinhard-srgb', warning: null };
+  const region = { x: 516, y: 288, w: 2408, h: 792 };
+  const { spawn } = fakeSpawnFactory({ respond: req => {
+    request = req;
+    return { ok: true, w: 3440, h: 1440, lines: [], color, region, passes: ['titles-2x', 'band'] };
+  }});
+  const worker = createOcrWorker({ spawn, platform: 'win32' });
+  const cap = await worker.capture({ imagePath: 'C:\\frame.png', frameW: 3440, frameH: 1440, offsetX: 516, offsetY: 288 });
+  assert.equal(request.imagePath, 'C:\\frame.png');
+  assert.equal(request.offsetX, 516);
+  assert.equal(request.frameH, 1440);
+  assert.deepEqual(cap.color, color);
+  assert.deepEqual(cap.region, region);
+  assert.deepEqual(cap.passes, ['titles-2x', 'band']);
+  worker.stop();
+});

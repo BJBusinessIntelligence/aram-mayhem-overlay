@@ -5,7 +5,7 @@ export const CLUSTER_RADIUS = 0.06;                                 // fraction 
 const SLOTS = ['left', 'center', 'right'];
 
 export function normalizeText(s) {
-  return String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return String(s ?? '').toLowerCase().replace(/^\s*quest\s*:\s*/, '').replace(/[^a-z0-9]/g, '');
 }
 
 export function levenshtein(a, b) {
@@ -47,7 +47,10 @@ export function slotForX(cx, frameW) {
 function bestMatch(norm, index, minScore) {
   let best = null;
   for (const e of index) {
-    const s = scoreName(norm, e.norm);
+    // The live card still uses the older title for ARAM_RabbleRousing (1067).
+    // Both catalogues call it Rejuvenation; do not map the Arena variant (67).
+    const s = Math.max(scoreName(norm, e.norm), e.id === 1067 && e.norm === 'rejuvenation'
+      ? scoreName(norm, 'rabblerousing') : 0);
     if (s >= minScore && (!best || s > best.score || (s === best.score && e.norm.length > best.entry.norm.length))) best = { entry: e, score: s };
   }
   return best;

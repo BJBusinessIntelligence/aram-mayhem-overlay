@@ -1,0 +1,128 @@
+{
+  "ok": true,
+  "w": 3440,
+  "h": 1440,
+  "window": true,
+  "ms": 93,
+  "lines": [
+    {
+      "text": "[E]",
+      "x": 1225,
+      "y": 461,
+      "w": 24,
+      "h": 18
+    },
+    {
+      "text": "Bread and Cheese",
+      "x": 1130,
+      "y": 581,
+      "w": 214,
+      "h": 20
+    },
+    {
+      "text": "General",
+      "x": 1211,
+      "y": 623,
+      "w": 52,
+      "h": 11
+    },
+    {
+      "text": "Your Frenzying Taunt gains 100 Ability",
+      "x": 1085,
+      "y": 681,
+      "w": 304,
+      "h": 12
+    },
+    {
+      "text": "Haste.",
+      "x": 1214,
+      "y": 703,
+      "w": 47,
+      "h": 12
+    },
+    {
+      "text": "Reaper",
+      "x": 1010,
+      "y": 962,
+      "w": 48,
+      "h": 14
+    },
+    {
+      "text": "11 \u2022",
+      "x": 960,
+      "y": 986,
+      "w": 32,
+      "h": 11
+    },
+    {
+      "text": "Shark Bait",
+      "x": 1664,
+      "y": 581,
+      "w": 126,
+      "h": 20
+    },
+    {
+      "text": "Damage",
+      "x": 1700,
+      "y": 623,
+      "w": 55,
+      "h": 14
+    },
+    {
+      "text": "A few seconds after death, a shark chomps",
+      "x": 1565,
+      "y": 681,
+      "w": 324,
+      "h": 13
+    },
+    {
+      "text": "all nearby enemies. You can move after",
+      "x": 1576,
+      "y": 703,
+      "w": 303,
+      "h": 12
+    },
+    {
+      "text": "death to aim the shark attack.",
+      "x": 1614,
+      "y": 725,
+      "w": 227,
+      "h": 12
+    },
+    {
+      "text": "Rabble Rousing",
+      "x": 2125,
+      "y": 581,
+      "w": 185,
+      "h": 20
+    },
+    {
+      "text": "Resilience",
+      "x": 2184,
+      "y": 623,
+      "w": 66,
+      "h": 11
+    },
+    {
+      "text": "Using Defensive Ball Curl restores Health.",
+      "x": 2057,
+      "y": 681,
+      "w": 321,
+      "h": 15
+    },
+    {
+      "text": "2.5s 2.1s",
+      "x": 2519,
+      "y": 825,
+      "w": 68,
+      "h": 12
+    },
+    {
+      "text": "714",
+      "x": 2373,
+      "y": 1017,
+      "w": 24,
+      "h": 10
+    }
+  ]
+}

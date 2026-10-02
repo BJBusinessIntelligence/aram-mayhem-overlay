@@ -43,11 +43,13 @@ function fakeFs({ readdirResult = [] } = {}) {
   const writeFileCalls = [];
   const readdirCalls = [];
   const rmCalls = [];
+  const copyFileCalls = [];
   return {
-    mkdirCalls, writeFileCalls, readdirCalls, rmCalls,
+    mkdirCalls, writeFileCalls, readdirCalls, rmCalls, copyFileCalls,
     mkdir: async (dir, opts) => { mkdirCalls.push({ dir, opts }); },
     writeFile: async (p, data) => { writeFileCalls.push({ path: p, data }); },
     readdir: async (dir) => { readdirCalls.push(dir); return readdirResult; },
+    copyFile: async (from, to) => { copyFileCalls.push({ from, to }); },
     rm: async (p) => { rmCalls.push(p); },
   };
 }
@@ -167,7 +169,7 @@ test('autoDump:true, in-game tick with no offer match still writes one tick-*.js
   assert.ok(call.path.endsWith(`tick-42.json`));
   const dump = JSON.parse(call.data);
   assert.deepEqual(Object.keys(dump).sort(), ['capture', 'match']);
-  assert.deepEqual(Object.keys(dump.capture).sort(), ['h', 'lines', 'ms', 'w', 'window']);
+  assert.deepEqual(dump.capture, EMPTY);
   assert.equal(dump.match, null);
 });
 
@@ -183,7 +185,7 @@ test('maxTickDumps caps tick-*.json files, removing the oldest by name', async (
   const { w } = setup({ debugDir: 'data/debug', fs, path, autoDump: true, maxTickDumps: 2, now: () => 400 });
   await w.tick();
   await flush();
-  assert.equal(fs.rmCalls.length, 1);
+  assert.equal(fs.rmCalls.length, 2);
   assert.ok(fs.rmCalls[0].endsWith('tick-100.json'));
 });
 
@@ -216,4 +218,63 @@ test('augment index memo: an extra list of different length rebuilds the index',
   const a = memo(champData, []);
   const b = memo(champData, [{ id: 99, name: 'Extra Augment', rarity: 'gold' }]);
   assert.notEqual(a, b);
+});
+
+
+test('debug retains distinct offer-like misses with their same-frame PNG and HDR metadata', async () => {
+  const color = { backend: 'dxgi', hdr: true, pixelFormat: 'R16G16B16A16_FLOAT', toneMap: 'reinhard-srgb', warning: null };
+  const miss = { ...titles('Unknown First', 'Unknown Second', 'Unknown Third'), color,
+    lines: ['Unknown First', 'Unknown Second', 'Unknown Third'].map((text, i) => ({ text, x: 1180 + i * 490, y: 581, w: 180, h: 24 })) };
+  const fs = fakeFs();
+  let ts = 10;
+  const { w, st, captures } = setup({ frames: [miss, miss], debugDir: 'data/debug', fs, path, autoDump: true, now: () => ts++ });
+  await w.tick(); await w.tick(); await flush();
+  assert.ok(captures[0].saveTo.endsWith('.png'));
+  const samples = fs.writeFileCalls.filter(c => path.basename(c.path).startsWith('sample-'));
+  assert.equal(samples.length, 1, 'unchanged title screen is retained once');
+  const sample = JSON.parse(samples[0].data);
+  assert.equal(sample.match, null);
+  assert.deepEqual(sample.capture.color, color);
+  assert.equal(fs.copyFileCalls[0].from, captures[0].saveTo, 'retains the analyzed frame, not another capture');
+  assert.equal(st.statuses.at(-1).hdr, true);
+});
+
+test('debug retention removes PNG companions together with old JSON records', async () => {
+  const fs = fakeFs({ readdirResult: ['tick-100.json', 'tick-100.png', 'tick-200.json', 'tick-200.png', 'sample-100.json', 'sample-100.png'] });
+  const { w } = setup({ debugDir: 'data/debug', fs, path, autoDump: true, maxTickDumps: 1, now: () => 300 });
+  await w.tick(); await flush();
+  assert.ok(fs.rmCalls.some(p => p.endsWith('tick-100.png')));
+  assert.ok(!fs.rmCalls.some(p => p.includes('sample-100')));
+});
+
+test('failure to retain a sample does not skip rolling debug cleanup', async () => {
+  const fs = fakeFs({ readdirResult: ['tick-100.json', 'tick-200.json'] });
+  fs.copyFile = async () => { throw new Error('sample copy failed'); };
+  const { w } = setup({ frames: [titles('Mystic Punch', 'Final Form', 'Clown College')], debugDir: 'data/debug', fs, path, autoDump: true, maxTickDumps: 1 });
+  await w.tick();
+  assert.ok(fs.rmCalls.some(p => p.endsWith('tick-100.json')));
+});
+
+test('orphan PNGs left by interrupted debug writes are included in retention', async () => {
+  const fs = fakeFs({ readdirResult: ['tick-100.png', 'tick-200.json', 'tick-200.png', 'sample-100.png'] });
+  const { w } = setup({ debugDir: 'data/debug', fs, path, autoDump: true, maxTickDumps: 1 });
+  await w.tick();
+  assert.ok(fs.rmCalls.some(p => p.endsWith('tick-100.png')));
+  assert.ok(!fs.rmCalls.some(p => p.includes('sample-100')));
+});
+
+test('a failed debug PNG save still publishes the captured offer', async () => {
+  const f = { ...titles('Mystic Punch', 'Final Form', 'Clown College'), saveError: 'disk full' };
+  const fs = fakeFs();
+  const { w, st } = setup({ frames: [f, f], debugDir: 'data/debug', fs, path, autoDump: true });
+  await w.tick(); await w.tick();
+  assert.equal(st.offers.length, 1);
+  assert.equal(fs.copyFileCalls.length, 0, 'do not copy a PNG that failed to save');
+  assert.equal(JSON.parse(fs.writeFileCalls[0].data).capture.saveError, 'disk full');
+});
+
+test('explicit capture save reports a failed PNG instead of returning a nonexistent saved path', async () => {
+  const f = { ...titles('Mystic Punch', 'Final Form', 'Clown College'), saveError: 'disk full' };
+  const { w } = setup({ frames: [f], debugDir: 'data/debug', fs: fakeFs(), path });
+  await assert.rejects(w.captureOnce({ save: true }), /Screenshot save failed: disk full/);
 });

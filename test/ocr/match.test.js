@@ -108,3 +108,20 @@ test('same name in two clusters keeps both; best score per cluster wins', () => 
   assert.equal(o.matched, 3);
   assert.equal(o.cards[0].name, 'Mystic Punch');
 });
+
+for (const [file, expected] of [
+  ['quest-title.json', [1180, 2083, 1152]],
+  ['renamed-title.json', [1151, 2032, 1067]],
+]) {
+  test(`recorded game offer: ${file} resolves all three catalogue IDs`, () => {
+    const cap = fixture('ocr', file);
+    const result = matchOffer(cap.lines, index, { frameW: cap.w, frameH: cap.h });
+    assert.deepEqual(result.cards.map(c => c.augmentId), expected);
+  });
+}
+
+test('a quest prefix is optional but arbitrary name prefixes are not', () => {
+  const result = matchOffer([line('Quest: Steel Your Heart', L, Y), line('Zealot', C, Y), line('Not Final Form', R, Y)], index, FRAME);
+  assert.equal(result.cards[0].augmentId, 1152);
+  assert.equal(result.cards[2].augmentId, null);
+});

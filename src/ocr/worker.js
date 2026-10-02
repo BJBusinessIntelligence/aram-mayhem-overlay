@@ -11,6 +11,10 @@ function normalizeCapture(msg) {
   if (!msg || !msg.ok) return UNAVAILABLE(msg && msg.error ? String(msg.error) : 'unknown worker error');
   const raw = Array.isArray(msg.lines) ? msg.lines : msg.lines ? [msg.lines] : [];
   return {
+    ...(msg.saveError ? { saveError: String(msg.saveError) } : {}),
+    ...(msg.region ? { region: msg.region } : {}),
+    ...(msg.color ? { color: msg.color } : {}),
+    ...(Array.isArray(msg.passes) ? { passes: msg.passes } : {}),
     ok: true, w: Number(msg.w) || 0, h: Number(msg.h) || 0, window: !!msg.window, ms: Number(msg.ms) || 0,
     lines: raw.map((l) => ({ text: String(l.text ?? ''), x: Number(l.x) || 0, y: Number(l.y) || 0, w: Number(l.w) || 0, h: Number(l.h) || 0 })),
   };
@@ -121,7 +125,9 @@ export function createOcrWorker({
     isAvailable: () => supported && !dead,
     lastError: () => lastError,
     capture: (opts = {}) => (supported
-      ? request({ cmd: 'capture', region: opts.region ?? 'band', saveTo: opts.saveTo ?? null }).then(normalizeCapture)
+      ? request({ cmd: 'capture', region: opts.region ?? 'band', saveTo: opts.saveTo ?? null,
+        ...(opts.imagePath ? { imagePath: opts.imagePath, frameW: opts.frameW, frameH: opts.frameH, offsetX: opts.offsetX, offsetY: opts.offsetY } : {}),
+      }).then(normalizeCapture)
       : Promise.resolve(UNAVAILABLE('OCR is Windows-only'))),
     ping: () => (supported ? request({ cmd: 'ping' }) : Promise.resolve(UNAVAILABLE('OCR is Windows-only'))),
     stop() {

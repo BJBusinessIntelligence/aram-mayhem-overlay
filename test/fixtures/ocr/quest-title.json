@@ -1,0 +1,135 @@
+{
+  "ok": true,
+  "w": 3440,
+  "h": 1440,
+  "window": true,
+  "ms": 138,
+  "lines": [
+    {
+      "text": "Big Brain",
+      "x": 1183,
+      "y": 582,
+      "w": 109,
+      "h": 24
+    },
+    {
+      "text": "Resilience",
+      "x": 1204,
+      "y": 623,
+      "w": 66,
+      "h": 11
+    },
+    {
+      "text": "Gain 3 Shield for every 1 Ability Power.",
+      "x": 1073,
+      "y": 681,
+      "w": 329,
+      "h": 12
+    },
+    {
+      "text": "Resets on death or 70 seconds after",
+      "x": 1103,
+      "y": 703,
+      "w": 269,
+      "h": 12
+    },
+    {
+      "text": "depletion.",
+      "x": 1199,
+      "y": 725,
+      "w": 76,
+      "h": 15
+    },
+    {
+      "text": "dRSupe",
+      "x": 1457,
+      "y": 720,
+      "w": 52,
+      "h": 14
+    },
+    {
+      "text": "Tooth Fairy",
+      "x": 1655,
+      "y": 581,
+      "w": 143,
+      "h": 20
+    },
+    {
+      "text": "Damage",
+      "x": 1700,
+      "y": 623,
+      "w": 55,
+      "h": 14
+    },
+    {
+      "text": "Bursting enemies drops Teeth. Picking up",
+      "x": 1571,
+      "y": 681,
+      "w": 314,
+      "h": 15
+    },
+    {
+      "text": "Teeth grants you permanent Lethality and",
+      "x": 1565,
+      "y": 703,
+      "w": 323,
+      "h": 12
+    },
+    {
+      "text": "Magic Penetration.",
+      "x": 1656,
+      "y": 725,
+      "w": 144,
+      "h": 15
+    },
+    {
+      "text": "-3",
+      "x": 1744,
+      "y": 996,
+      "w": 29,
+      "h": 19
+    },
+    {
+      "text": "Quest: Steel Your Heart",
+      "x": 2074,
+      "y": 582,
+      "w": 286,
+      "h": 21
+    },
+    {
+      "text": "Resilience Quest",
+      "x": 2154,
+      "y": 623,
+      "w": 125,
+      "h": 11
+    },
+    {
+      "text": "Requirement: Possess Heartsteel with",
+      "x": 2075,
+      "y": 681,
+      "w": 285,
+      "h": 15
+    },
+    {
+      "text": "300+ stacks.",
+      "x": 2169,
+      "y": 703,
+      "w": 97,
+      "h": 12
+    },
+    {
+      "text": "Reward: Multiply your Heartsteel stacks by",
+      "x": 2053,
+      "y": 747,
+      "w": 329,
+      "h": 12
+    },
+    {
+      "text": "3.",
+      "x": 2210,
+      "y": 769,
+      "w": 14,
+      "h": 12
+    }
+  ]
+}

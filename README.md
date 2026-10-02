@@ -46,7 +46,7 @@ build rather than a Mayhem one. It's a fallback for when aramkit is unreachable,
 ## Live augment offers (Windows)
 
 While you are in a game the overlay captures the League window with Windows' built-in OCR
-(about 4 frames/s while an offer is on screen, one every 1.5 s otherwise) and reads the three
+(500 ms between captures while an offer is on screen, 1.5 s otherwise, plus OCR time) and reads the three
 augment card titles. When two consecutive frames agree, the page switches to three cards:
 
 - **PICK** — the best card by tier, then win rate.
@@ -57,9 +57,20 @@ The list returns when the cards disappear. Press Esc or "Show list" to dismiss e
 Requirements: League in **Borderless** (or Windowed) mode; English client. Nothing is clicked
 or sent to the game — capture only.
 
+HDR is detected automatically on the captured monitor. DXGI captures FP16 scRGB pixels,
+then tone maps them to SDR for OCR. The status chip shows **HDR** when detected. If the
+native capture path is unavailable (including rotated monitors or a crop spanning monitors),
+GDI capture remains available with an **HDR capture limited** warning. Hover over the chip
+for the reason. No Windows HDR settings are changed.
+
+OCR reads each title in a separate enlarged crop as well as the wider band. This avoids a
+Windows OCR failure where an entire band returns zero lines despite readable card titles.
+The matcher also accepts the in-game `Quest:` prefix and the older `Rabble Rousing` name
+for `Rejuvenation`, retaining the catalogue's ID and champion statistics.
+
 Options: `OCR_ENABLED=false` / `--ocr=false` turns it off; `OCR_IDLE_MS`, `OCR_ACTIVE_MS`,
-`OCR_REGION=band|full`, `--ocr-debug` (dumps every in-game tick's OCR result, plus every
-published offer, to `data/debug/`; see below).
+`OCR_REGION=band|full`, `--ocr-debug` (saves screenshots and OCR results to `data/debug/`;
+see retention details below).
 Runtime toggle: `POST /api/ocr {"enabled":false}`.
 
 Calibration / troubleshooting: capture a frame + OCR result under `data/debug/` for tuning,
@@ -73,8 +84,34 @@ via any of:
 
 These work whether or not `--ocr-debug` is set, and attach the saved files when reporting a
 missed offer. Separately, run one full game with `node src/main.js --ocr-debug` and send
-`data/debug/` for tuning: it writes every in-game tick's OCR result as `tick-<ts>.json`
-(capped at the newest 100 files) plus one `offer-<ts>.json` per published offer.
+`data/debug/` for tuning. It retains:
+
+- The newest 100 `tick-<ts>.json` + `.png` pairs, including unmatched frames.
+- The newest 100 distinct offer-like `sample-<ts>.json` + `.png` pairs. These include
+  unrecognised title screens and survive the rolling tick window. They are a diagnostic
+  heuristic, not a guarantee that every missed screen is retained.
+- One `offer-<ts>.json` per published offer, as before.
+
+JSON includes crop offsets, capture backend, pixel format, HDR state, tone mapping, warnings,
+and OCR passes. Each PNG is the exact frame analyzed, before title enlargement. Debug mode
+uses more disk space (up to 200 screenshots plus JSON); leave it off for normal play.
+
+Replay a saved band on Windows without running a game (use its JSON `capture.region`
+offsets and full-frame dimensions):
+
+```powershell
+node scripts/ocr-capture.js --image test/fixtures/ocr/unreadable-band.png --frame-w 3440 --frame-h 1440 --offset-x 516 --offset-y 288 --json data/debug/replay.json
+```
+
+`npm test` includes a Windows-only replay of the formerly unreadable screenshot. Native
+HDR pixel conversion tests run with:
+
+```powershell
+powershell -NoProfile -File test/ocr/native-capture.test.ps1
+```
+
+The capture implementation follows Microsoft's [HDR capture guidance](https://learn.microsoft.com/en-us/windows/apps/develop/media-authoring-processing/screen-capture)
+and [DuplicateOutput1 format contract](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_5/nf-dxgi1_5-idxgioutput5-duplicateoutput1).
 
 ## Manual smoke checklist
 
