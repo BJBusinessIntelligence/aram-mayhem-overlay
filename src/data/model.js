@@ -2,6 +2,8 @@ export const RARITIES = Object.freeze(['prismatic', 'gold', 'silver']);
 export const STAGES = Object.freeze([1, 2, 3, 4]);
 export const TIER_ORDER = Object.freeze({ S: 0, A: 1, B: 2, C: 3, D: 4 });
 
+export const EMPTY_LINEUP = Object.freeze({ held: null, bench: [], allies: [], enemies: [] });
+
 export const EMPTY_GAME = Object.freeze({
   phase: 'none',          // none | champselect | loading | ingame
   queueId: null,
@@ -14,6 +16,8 @@ export const EMPTY_GAME = Object.freeze({
   liveConnected: false,
   error: null,
   updatedAt: 0,
+  lineup: EMPTY_LINEUP,   // champion ids: { held, bench, allies, enemies }
+  lineupRev: 0,           // bumps whenever lineup content changes
 });
 
 export function stageFromLevel(level) {

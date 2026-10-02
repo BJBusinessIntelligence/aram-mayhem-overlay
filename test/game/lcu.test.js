@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createLcuClient, pickedChampion } from '../../src/game/lcu.js';
+import { createLcuClient, pickedChampion, extractChampSelect } from '../../src/game/lcu.js';
+import { fixture } from '../helpers/fixtures.js';
 
 const lock = { port: 55555, password: 'secret' };
 function fakeGetJson(routes) {
@@ -39,7 +40,7 @@ test('champ select: phase, queue, picked champion; auth header and insecure tls'
     '/lol-champ-select/v1/session': { localPlayerCellId: 0, myTeam: [{ cellId: 0, championId: 62 }] },
   });
   const lcu = createLcuClient({ readLockfile: async () => lock, getJson });
-  assert.deepEqual(await lcu.snapshot(), { connected: true, phase: 'ChampSelect', queueId: 2400, championId: 62 });
+  assert.deepEqual(await lcu.snapshot(), { connected: true, phase: 'ChampSelect', queueId: 2400, championId: 62, champSelect: { held: 62, bench: [], allies: [] } });
   assert.match(calls[0][0], /^https:\/\/127\.0\.0\.1:55555\//);
   assert.equal(calls[0][1].headers.authorization, 'Basic ' + Buffer.from('riot:secret').toString('base64'));
   assert.equal(calls[0][1].rejectUnauthorized, false);
@@ -48,14 +49,14 @@ test('champ select: phase, queue, picked champion; auth header and insecure tls'
 test('in progress: no champ-select call; session failure leaves queue null', async () => {
   const { getJson, calls } = fakeGetJson({ '/lol-gameflow/v1/gameflow-phase': 'InProgress' });
   const lcu = createLcuClient({ readLockfile: async () => lock, getJson });
-  assert.deepEqual(await lcu.snapshot(), { connected: true, phase: 'InProgress', queueId: null, championId: null });
+  assert.deepEqual(await lcu.snapshot(), { connected: true, phase: 'InProgress', queueId: null, championId: null, champSelect: null });
   assert.ok(!calls.some(([u]) => u.includes('champ-select')));
 });
 
 test('phase None skips session lookup', async () => {
   const { getJson, calls } = fakeGetJson({ '/lol-gameflow/v1/gameflow-phase': 'None' });
   const lcu = createLcuClient({ readLockfile: async () => lock, getJson });
-  assert.deepEqual(await lcu.snapshot(), { connected: true, phase: 'None', queueId: null, championId: null });
+  assert.deepEqual(await lcu.snapshot(), { connected: true, phase: 'None', queueId: null, championId: null, champSelect: null });
   assert.equal(calls.length, 1);
 });
 
@@ -63,4 +64,26 @@ test('phase request failure → disconnected', async () => {
   const { getJson } = fakeGetJson({ '/lol-gameflow/v1/gameflow-phase': new Error('ECONNREFUSED') });
   const lcu = createLcuClient({ readLockfile: async () => lock, getJson });
   assert.deepEqual(await lcu.snapshot(), { connected: false });
+});
+
+test('extractChampSelect: held, bench without empty slots, allies without me', () => {
+  const cs = fixture('lcu', 'champ-select-session.json');
+  assert.deepEqual(extractChampSelect(cs), { held: 157, bench: [99, 54], allies: [1, 62, 25, 103] });
+  assert.deepEqual(extractChampSelect({}), { held: null, bench: [], allies: [] });
+  assert.deepEqual(extractChampSelect({ localPlayerCellId: 0, myTeam: [{ cellId: 0, championId: 0 }, { cellId: 1, championId: 0 }] }), { held: null, bench: [], allies: [] });
+});
+
+test('snapshot in champ select carries champSelect; other phases carry null', async () => {
+  const cs = fixture('lcu', 'champ-select-session.json');
+  const { getJson } = fakeGetJson({
+    '/lol-gameflow/v1/gameflow-phase': 'ChampSelect',
+    '/lol-gameflow/v1/session': { gameData: { queue: { id: 2400 } } },
+    '/lol-champ-select/v1/session': cs,
+  });
+  const lcu = createLcuClient({ readLockfile: async () => lock, getJson });
+  const s = await lcu.snapshot();
+  assert.equal(s.championId, 157);
+  assert.deepEqual(s.champSelect, { held: 157, bench: [99, 54], allies: [1, 62, 25, 103] });
+  const { getJson: g2 } = fakeGetJson({ '/lol-gameflow/v1/gameflow-phase': 'InProgress' });
+  assert.equal((await createLcuClient({ readLockfile: async () => lock, getJson: g2 }).snapshot()).champSelect, null);
 });

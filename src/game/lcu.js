@@ -4,6 +4,18 @@ export function pickedChampion(cs) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+const validId = (id) => Number.isInteger(id) && id > 0;
+
+// ARAM champ select: every ally already holds a champion; the bench lists swap options.
+export function extractChampSelect(cs) {
+  const team = Array.isArray(cs?.myTeam) ? cs.myTeam : [];
+  const me = team.find((p) => p && p.cellId === cs.localPlayerCellId);
+  const held = validId(me?.championId) ? me.championId : null;
+  const allies = team.filter((p) => p && p !== me && validId(p.championId)).map((p) => p.championId);
+  const bench = (Array.isArray(cs?.benchChampions) ? cs.benchChampions : []).map((b) => b?.championId).filter(validId);
+  return { held, bench, allies };
+}
+
 export function createLcuClient({ readLockfile, getJson, timeoutMs = 1500 }) {
   async function request(lock, path) {
     const { status, body } = await getJson(`https://127.0.0.1:${lock.port}${path}`, {
@@ -31,11 +43,15 @@ export function createLcuClient({ readLockfile, getJson, timeoutMs = 1500 }) {
             queueId = Number.isInteger(id) ? id : null;
           } catch { /* queue unknown */ }
         }
+        let champSelect = null;
         if (phase === 'ChampSelect') {
-          try { championId = pickedChampion(await request(lock, '/lol-champ-select/v1/session')); }
-          catch { /* not picked yet */ }
+          try {
+            const cs = await request(lock, '/lol-champ-select/v1/session');
+            championId = pickedChampion(cs);
+            champSelect = extractChampSelect(cs);
+          } catch { /* not picked yet */ }
         }
-        return { connected: true, phase, queueId, championId };
+        return { connected: true, phase, queueId, championId, champSelect };
       } catch {
         return { connected: false };
       }

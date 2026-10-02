@@ -1,8 +1,12 @@
-import { EMPTY_GAME, stageFromLevel } from '../data/model.js';
+import { EMPTY_GAME, EMPTY_LINEUP, stageFromLevel } from '../data/model.js';
+
+const lineupKey = (l) => JSON.stringify([l.held, l.bench, l.allies, l.enemies]);
+const idsFromRiot = (names, champIndex) => (names ?? []).map((n) => champIndex.byRiotId(n)?.id).filter((id) => Number.isInteger(id));
 
 export function reduceGameState(prev, { lcu, live }, champIndex, now = Date.now) {
   const next = { ...prev, lcuConnected: !!lcu?.connected, liveConnected: !!live?.connected, error: null, updatedAt: now() };
 
+  let lineup = EMPTY_LINEUP;
   if (live?.connected) {
     next.phase = 'ingame';
     next.level = live.level ?? null;
@@ -12,14 +16,19 @@ export function reduceGameState(prev, { lcu, live }, champIndex, now = Date.now)
     const champ = champIndex.byRiotId(live.championRiotId);
     if (champ) next.championId = champ.id;
     else { next.championId = null; next.error = `unknown champion "${live.championRiotId}"`; }
+    lineup = { held: next.championId, bench: [], allies: idsFromRiot(live.allies, champIndex), enemies: idsFromRiot(live.enemies, champIndex) };
   } else if (lcu?.connected && lcu.phase === 'ChampSelect' && lcu.championId) {
     next.phase = 'champselect';
     next.championId = lcu.championId;
     next.riotId = champIndex.byId(lcu.championId)?.riotId ?? null;
     next.level = null; next.stage = null; next.gameMode = null;
+    const cs = lcu.champSelect ?? {};
+    lineup = { held: lcu.championId, bench: cs.bench ?? [], allies: cs.allies ?? [], enemies: [] };
   } else if (lcu?.connected && (lcu.phase === 'InProgress' || lcu.phase === 'Reconnect')) {
     next.phase = 'loading';
     next.level = null; next.stage = null;
+    // loading: keep the previous lineup (allies from champ select) until the live client appears
+    lineup = prev.lineup ?? EMPTY_LINEUP;
   } else {
     next.phase = 'none';
     next.level = null; next.stage = null; next.gameMode = null;
@@ -27,10 +36,13 @@ export function reduceGameState(prev, { lcu, live }, champIndex, now = Date.now)
 
   if (lcu?.connected && lcu.queueId != null) next.queueId = lcu.queueId;
   else if (next.phase === 'none') next.queueId = null;
+
+  next.lineup = lineup;
+  next.lineupRev = lineupKey(lineup) === lineupKey(prev.lineup ?? EMPTY_LINEUP) ? (prev.lineupRev ?? 0) : (prev.lineupRev ?? 0) + 1;
   return next;
 }
 
-const COMPARE = ['phase', 'queueId', 'championId', 'riotId', 'level', 'stage', 'gameMode', 'lcuConnected', 'liveConnected', 'error'];
+const COMPARE = ['phase', 'queueId', 'championId', 'riotId', 'level', 'stage', 'gameMode', 'lcuConnected', 'liveConnected', 'error', 'lineupRev'];
 export function sameState(a, b) {
   return COMPARE.every((k) => a?.[k] === b?.[k]);
 }

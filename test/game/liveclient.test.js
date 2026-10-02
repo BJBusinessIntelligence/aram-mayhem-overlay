@@ -11,8 +11,11 @@ test('stripChampionPrefix', () => {
   assert.equal(stripChampionPrefix(null), null);
 });
 
-test('extractActive matches by riotId', () => {
-  assert.deepEqual(extractActive(data), { championRiotId: 'MonkeyKing', championName: 'Wukong', level: 7, gameMode: 'ARAM' });
+test('extractActive matches by riotId and splits teams', () => {
+  assert.deepEqual(extractActive(data), {
+    championRiotId: 'MonkeyKing', championName: 'Wukong', level: 7, gameMode: 'ARAM',
+    allies: ['Annie'], enemies: ['Lux', 'Malphite', 'Jinx'],
+  });
 });
 
 test('extractActive falls back to summonerName and tolerates missing fields', () => {
@@ -21,7 +24,7 @@ test('extractActive falls back to summonerName and tolerates missing fields', ()
   delete d.allPlayers[1].riotId;
   delete d.activePlayer.level;
   delete d.gameData;
-  assert.deepEqual(extractActive(d), { championRiotId: 'MonkeyKing', championName: 'Wukong', level: null, gameMode: null });
+  assert.deepEqual(extractActive(d), { championRiotId: 'MonkeyKing', championName: 'Wukong', level: null, gameMode: null, allies: ['Annie'], enemies: ['Lux', 'Malphite', 'Jinx'] });
   assert.equal(extractActive({}), null);
   assert.equal(extractActive({ activePlayer: { riotId: 'x' }, allPlayers: [] }), null);
 });

@@ -15,11 +15,17 @@ export function extractActive(data) {
   const bySummoner = ap.summonerName ? players.find((p) => lower(p?.summonerName) === lower(ap.summonerName)) : null;
   const me = byRiot ?? bySummoner;
   if (!me) return null;
+  const others = players.filter((p) => p && p !== me);
+  const nameOf = (p) => stripChampionPrefix(p.rawChampionName) ?? p.championName ?? null;
+  const allies = others.filter((p) => p.team === me.team).map(nameOf).filter(Boolean);
+  const enemies = others.filter((p) => p.team && p.team !== me.team).map(nameOf).filter(Boolean);
   return {
     championRiotId: stripChampionPrefix(me.rawChampionName) ?? me.championName ?? null,
     championName: me.championName ?? null,
     level: typeof ap.level === 'number' && Number.isFinite(ap.level) ? ap.level : null,
     gameMode: data?.gameData?.gameMode ?? null,
+    allies,
+    enemies,
   };
 }
 

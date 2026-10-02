@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { reduceGameState, sameState, createDetector } from '../../src/game/detector.js';
-import { EMPTY_GAME } from '../../src/data/model.js';
+import { EMPTY_GAME, EMPTY_LINEUP } from '../../src/data/model.js';
 import { createChampionIndex } from '../../src/data/champions.js';
 import { fixture } from '../helpers/fixtures.js';
 
@@ -86,4 +86,30 @@ test('detector swallows onChange errors and keeps state', async () => {
   const det = createDetector({ lcu: { snapshot: async () => OFF }, live: { snapshot: async () => ({ connected: true, championRiotId: 'Yasuo', level: 1 }) }, champIndex: index, onChange: async () => { throw new Error('boom'); }, now });
   await det.tick();
   assert.equal(det.getState().championId, 157);
+});
+
+test('champ select lineup: held, bench, allies from LCU; rev bumps only on change', () => {
+  const lcu = { connected: true, phase: 'ChampSelect', queueId: 2400, championId: 157, champSelect: { held: 157, bench: [99, 54], allies: [1, 62, 25, 103] } };
+  const a = reduce(EMPTY_GAME, { lcu, live: OFF });
+  assert.deepEqual(a.lineup, { held: 157, bench: [99, 54], allies: [1, 62, 25, 103], enemies: [] });
+  assert.equal(a.lineupRev, 1);
+  const b = reduce(a, { lcu, live: OFF });
+  assert.equal(b.lineupRev, 1);
+  const c = reduce(b, { lcu: { ...lcu, championId: 99, champSelect: { held: 99, bench: [157, 54], allies: [1, 62, 25, 103] } }, live: OFF });
+  assert.equal(c.lineupRev, 2);
+  assert.equal(c.lineup.held, 99);
+});
+
+test('in game lineup: allies and enemies mapped through the champion index, unknown names dropped', () => {
+  const live = { connected: true, championRiotId: 'MonkeyKing', level: 3, gameMode: 'ARAM', allies: ['Annie', 'Nope'], enemies: ['Lux', 'Malphite', 'Jinx'] };
+  const s = reduce(EMPTY_GAME, { lcu: OFF, live });
+  assert.deepEqual(s.lineup, { held: 62, bench: [], allies: [1], enemies: [99, 54, 222] });
+  assert.equal(s.lineupRev, 1);
+});
+
+test('no game → EMPTY_LINEUP; sameState sees lineup changes', () => {
+  const s = reduce({ ...EMPTY_GAME, lineup: { held: 1, bench: [], allies: [], enemies: [] }, lineupRev: 3 }, { lcu: OFF, live: OFF });
+  assert.deepEqual(s.lineup, EMPTY_LINEUP);
+  assert.equal(s.lineupRev, 4);
+  assert.equal(sameState({ ...EMPTY_GAME, lineupRev: 1 }, { ...EMPTY_GAME, lineupRev: 2 }), false);
 });

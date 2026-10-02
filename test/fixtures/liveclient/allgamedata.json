@@ -2,7 +2,10 @@
   "activePlayer": { "riotId": "Boyd#NA1", "riotIdGameName": "Boyd", "riotIdTagLine": "NA1", "summonerName": "Boyd", "level": 7, "currentGold": 1234.5 },
   "allPlayers": [
     { "riotId": "Other#NA1", "summonerName": "Other", "championName": "Annie", "rawChampionName": "game_character_displayname_Annie", "team": "ORDER", "level": 6 },
-    { "riotId": "Boyd#NA1", "summonerName": "Boyd", "championName": "Wukong", "rawChampionName": "game_character_displayname_MonkeyKing", "team": "ORDER", "level": 7 }
+    { "riotId": "Boyd#NA1", "summonerName": "Boyd", "championName": "Wukong", "rawChampionName": "game_character_displayname_MonkeyKing", "team": "ORDER", "level": 7 },
+    { "team": "CHAOS", "rawChampionName": "game_character_displayname_Lux", "championName": "Lux", "riotId": "E1#NA1", "summonerName": "E1" },
+    { "team": "CHAOS", "rawChampionName": "game_character_displayname_Malphite", "championName": "Malphite", "riotId": "E2#NA1", "summonerName": "E2" },
+    { "team": "CHAOS", "rawChampionName": "game_character_displayname_Jinx", "championName": "Jinx", "riotId": "E3#NA1", "summonerName": "E3" }
   ],
   "gameData": { "gameMode": "ARAM", "gameTime": 412.7, "mapName": "Map12", "mapNumber": 12, "mapTerrain": "Default" }
 }
