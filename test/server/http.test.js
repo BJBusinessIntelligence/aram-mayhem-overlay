@@ -15,12 +15,16 @@ writeFileSync(path.join(publicDir, 'style.css'), 'body{}');
 
 const viewCalls = [];
 let refreshCalls = 0;
+let previewError = null;
 const state = {
   snapshot: () => ({ game: { phase: 'none' }, loading: false, champ: null, view: { stage: 'auto', bracket: 'all', stageUsed: null }, augments: null, build: null, meta: null, errors: [] }),
   setView: async (v) => { viewCalls.push(v); },
   refresh: async () => { refreshCalls++; },
   preview: async (id, opts) => { if (id === 404) throw new DataUnavailable([new Error('x')]); return { champ: { id }, view: opts }; },
-  previewRecommend: async (input) => ({ recommend: { preview: true, rev: null, context: input.enemies.length ? 'ingame' : 'champselect', candidates: [], team: {}, warnings: [] }, build: null, input }),
+  previewRecommend: async (input) => {
+    if (previewError) throw previewError;
+    return { recommend: { preview: true, rev: null, context: input.enemies.length ? 'ingame' : 'champselect', candidates: [], team: {}, warnings: [] }, build: null, input };
+  },
 };
 const champIndex = createChampionIndex(fixture('aramkit', 'resources-champions.json'));
 const server = createServer({ state, champIndex, publicDir });
@@ -177,4 +181,20 @@ test('POST /api/recommend/preview resolves names and rejects unknown ones', asyn
   assert.match(bad.body.error, /unknown champions: Nope/);
   const noHeld = await post('/api/recommend/preview', { bench: [99] });
   assert.equal(noHeld.status, 400);
+});
+
+test('POST /api/recommend/preview maps previewRecommend errors to 503/502', async () => {
+  previewError = new Error('recommender not configured');
+  const notConfigured = await post('/api/recommend/preview', { held: 'Yasuo' });
+  assert.equal(notConfigured.status, 503);
+  assert.match(notConfigured.body.error, /not configured/);
+
+  previewError = new Error('aramkit down');
+  const other = await post('/api/recommend/preview', { held: 'Yasuo' });
+  assert.equal(other.status, 502);
+  assert.equal(other.body.error, 'aramkit down');
+
+  previewError = null;
+  const ok = await post('/api/recommend/preview', { held: 'Yasuo' });
+  assert.equal(ok.status, 200);
 });

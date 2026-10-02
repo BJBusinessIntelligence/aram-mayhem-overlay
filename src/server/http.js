@@ -121,7 +121,10 @@ export function createServer({ state, champIndex, publicDir, watcher = null }) {
         if (held.ids.length !== 1) return send(res, 400, { error: 'held champion required' });
         let result;
         try { result = await state.previewRecommend({ held: held.ids[0], bench: bench.ids, allies: allies.ids, enemies: enemies.ids }); }
-        catch (e) { return send(res, /not configured/.test(e.message) ? 503 : 502, { error: e.message }); }
+        catch (e) {
+          const message = e && e.message ? e.message : String(e);
+          return send(res, /not configured/.test(message) ? 503 : 502, { error: message });
+        }
         return send(res, 200, result);
       }
       return send(res, 404, { error: 'not found' });
