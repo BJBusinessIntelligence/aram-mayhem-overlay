@@ -36,12 +36,32 @@
         <button data-bracket="all">All</button>
         <button data-bracket="high">High MMR</button>
       </div>
+      <button id="lineup-btn" title="Try a lineup without a game">Lineup…</button>
       <div class="spacer"></div>
       <div id="meta"></div>
       <span id="ocr-chip" class="chip" hidden></span>
     </div>
     <div id="banner" hidden></div>
   </header>
+  <form id="lineup-form" hidden autocomplete="off">
+    <label>Held <input name="held" placeholder="Yasuo"></label>
+    <label>Bench <input name="bench" placeholder="Lux, Malphite"></label>
+    <label>Allies <input name="allies" placeholder="Annie, Wukong, Morgana, Ahri"></label>
+    <label>Enemies <input name="enemies" placeholder="(leave empty for champ select)"></label>
+    <button type="submit">Rank</button>
+    <button type="button" id="lineup-close">Close</button>
+  </form>
+  <section id="recommend" hidden>
+    <div class="rec-head">
+      <div id="rec-title">Champ select</div>
+      <div id="rec-meta" class="muted"></div>
+      <div class="spacer"></div>
+      <button id="rec-hide">Hide</button>
+    </div>
+    <div id="rec-team" class="rec-team"></div>
+    <div id="rec-warnings" class="muted" hidden></div>
+    <div id="rec-cards" class="rec-cards"></div>
+  </section>
   <section id="offer" hidden>
     <div class="offer-head">
       <div id="offer-title">Augment offer</div>

@@ -73,3 +73,25 @@ h2.prismatic { color: var(--prismatic); } h2.gold { color: var(--gold); } h2.sil
 .ribbon { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); padding: 4px 14px; border-radius: 8px; font-weight: 800; letter-spacing: .06em; }
 .ribbon.pick { background: var(--good); color: #062; } .ribbon.reroll { background: var(--bad); color: #fff; } .ribbon.keep { background: #2c343f; color: var(--muted); } .ribbon.unread { background: #2c343f; color: var(--muted); }
 .card .ocr { margin-top: 6px; font-size: 12px; color: var(--muted); }
+#lineup-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; padding: 10px 14px; background: var(--panel2); border-bottom: 1px solid #2c343f; }
+#lineup-form[hidden] { display: none; }
+#lineup-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+#recommend { padding: 12px 14px; }
+#recommend[hidden] { display: none; }
+.rec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+#rec-title { font-size: 20px; font-weight: 700; }
+.rec-team { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.trait { font-size: 13px; padding: 2px 8px; border-radius: 10px; background: #2c343f; color: var(--muted); }
+.trait.ok { color: var(--good); } .trait.miss { color: var(--bad); }
+.rec-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 10px; }
+.rec-card { display: grid; grid-template-columns: 56px 1fr; gap: 10px; background: var(--panel); border-radius: 10px; padding: 10px; border: 2px solid transparent; }
+.rec-card.held { border-color: #2f5cff; }
+.rec-card img.icon { width: 56px; height: 56px; border-radius: 8px; }
+.rec-card .name { font-weight: 700; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rec-card .bar { position: relative; height: 18px; background: #2c343f; border-radius: 6px; margin: 6px 0; overflow: hidden; }
+.rec-card .fill { height: 100%; background: linear-gradient(90deg, #2f5cff, #4fd18b); }
+.rec-card .num { position: absolute; right: 8px; top: 0; font-size: 13px; font-weight: 700; line-height: 18px; }
+.reasons { display: flex; gap: 6px; flex-wrap: wrap; }
+.reason { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--panel2); }
+.small { font-size: 12px; }
+.chip.conf-high { color: var(--good); } .chip.conf-medium { color: var(--warn); } .chip.conf-low { color: var(--bad); }

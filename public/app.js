@@ -3,10 +3,14 @@ const noIcons = new URLSearchParams(location.search).has('noicons');
 const $ = (s) => document.querySelector(s);
 
 let preview = null;          // { id, stage, bracket } when browsing a champion manually
+let recPreview = null;      // result of POST /api/recommend/preview when the user tries a lineup
+let recHiddenRev = null;    // rev the user hid
 let lastRendered = '';
 let lastRenderKey = '';
 let lastLiveChampionId = null;
 let dismissedOfferAt = null;
+const TRAIT_NAMES = { frontline: 'Frontline', engage: 'Engage', peel: 'Peel', sustain: 'Sustain', cc: 'CC', poke: 'Poke' };
+const COVERAGE_OK = 0.6;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = (v, d = 1) => (v == null ? '–' : (v * 100).toFixed(d) + '%');
@@ -34,6 +38,7 @@ async function tick() {
     const state = await api('/api/state');
     const liveId = state.game.championId;
     if (preview && liveId && liveId !== lastLiveChampionId) preview = null; // new game detected → back to live
+    if (liveId && liveId !== lastLiveChampionId) { recPreview = null; recHiddenRev = null; }
     lastLiveChampionId = liveId;
     const payload = preview
       ? await api(`/api/champ/${preview.id}?stage=${preview.stage}&bracket=${preview.bracket}`)
@@ -83,8 +88,10 @@ function render(p, state) {
     const rows = p.augments ? p.augments.columns[r] : [];
     $(`#col-${r} .rows`).innerHTML = rows.map(renderAugment).join('') || '<div class="muted">–</div>';
   }
-  $('#build').innerHTML = renderBuild(p.build);
+  const build = recPreview ? recPreview.build : p.build;
+  $('#build').innerHTML = renderBuild(build);
 
+  renderRecommend(recPreview ? recPreview.recommend : p.recommend, p.game);
   renderOcrChip(p.ocr);
   const offer = p.offer;
   const showOffer = offer && dismissedOfferAt !== offer.detectedAt;
@@ -103,6 +110,36 @@ function renderOcrChip(o) {
   if (o.lastWarning) { el.textContent = 'OCR · HDR capture limited'; el.className = 'chip err'; return; }
   el.textContent = o.running ? `OCR on${o.hdr === true ? ' · HDR' : ''}${o.lastCaptureMs != null ? ` · ${o.lastCaptureMs} ms` : ''}` : 'OCR idle';
   el.className = 'chip on';
+}
+
+function renderRecommend(r, g) {
+  const el = $('#recommend');
+  const show = r && (recPreview || g.phase === 'champselect') && recHiddenRev !== (r.rev ?? 'preview');
+  el.hidden = !show;
+  if (!show) return;
+  const top = r.candidates[0];
+  $('#rec-title').textContent = recPreview ? 'Lineup preview' : 'Champ select';
+  $('#rec-meta').textContent = `${r.team.knownAllies}/4 allies known${top ? ` · confidence ${top.confidence}` : ''}${recPreview ? ' · Preview' : ''}`;
+  const cov = r.team.coverage ?? {};
+  const ad = Math.round((r.team.physicalShare ?? 0.5) * 100);
+  $('#rec-team').innerHTML = Object.entries(TRAIT_NAMES).map(([k, label]) => `<span class="trait ${(cov[k] ?? 0) >= COVERAGE_OK ? 'ok' : 'miss'}">${label} ${(cov[k] ?? 0) >= COVERAGE_OK ? '✓' : '✗'}</span>`).join('')
+    + `<span class="trait">${ad} % AD / ${100 - ad} % AP</span>`;
+  $('#rec-warnings').hidden = !(r.warnings && r.warnings.length);
+  $('#rec-warnings').textContent = (r.warnings ?? []).slice(0, 3).join(' · ');
+  $('#rec-cards').innerHTML = r.candidates.map((c) => {
+    const comp = c.components ?? {};
+    const title = `strength ${Math.round((comp.strength ?? 0) * 100)} · fit ${Math.round((comp.fit ?? 0) * 100)} · synergy ${Math.round((comp.synergy ?? 0) * 100)}`;
+    return `<div class="rec-card${c.held ? ' held' : ''}">
+      ${img(c.icon, 'icon')}
+      <div class="body">
+        <div class="name">${esc(c.name)} <span class="tier ${esc(c.tier ?? '')}">${esc(c.tier ?? '·')}</span> <span class="muted">${pct(c.winRate)} · ${kfmt(c.games)}</span>
+          <span class="chip ${c.held ? 'on' : ''}">${c.held ? 'HELD' : 'bench'}</span> <span class="chip conf-${esc(c.confidence)}">${esc(c.confidence)}</span></div>
+        <div class="bar" title="${esc(title)}"><div class="fill" style="width:${c.score}%"></div><span class="num">${c.score}</span></div>
+        <div class="reasons">${(c.reasons ?? []).map((t) => `<span class="reason">${esc(t)}</span>`).join('')}</div>
+        ${(c.warnings ?? []).length ? `<div class="muted small">${esc(c.warnings.join(' · '))}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('') || '<div class="muted">No candidates</div>';
 }
 
 function renderOffer(o) {
@@ -183,6 +220,18 @@ $('#capture-btn').addEventListener('click', async () => {
   } catch (e) { setBanner(e.message); }
 });
 $('#offer-dismiss').addEventListener('click', () => { const o = JSON.parse(lastRendered || '{}').offer; dismissedOfferAt = o ? o.detectedAt : null; lastRendered = ''; lastRenderKey = ''; tick(); });
+$('#lineup-btn').addEventListener('click', () => { $('#lineup-form').hidden = !$('#lineup-form').hidden; });
+$('#lineup-close').addEventListener('click', () => { $('#lineup-form').hidden = true; });
+$('#rec-hide').addEventListener('click', () => { const r = recPreview ? recPreview.recommend : JSON.parse(lastRendered || '{}').recommend; recHiddenRev = r ? (r.rev ?? 'preview') : null; if (recPreview) recPreview = null; lastRendered = ''; lastRenderKey = ''; tick(); });
+$('#lineup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const list = (k) => String(f.get(k) ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  try {
+    recPreview = await api('/api/recommend/preview', { method: 'POST', body: JSON.stringify({ held: String(f.get('held') ?? '').trim(), bench: list('bench'), allies: list('allies'), enemies: list('enemies') }) });
+    recHiddenRev = null; $('#lineup-form').hidden = true; lastRendered = ''; lastRenderKey = ''; tick();
+  } catch (err) { setBanner(err.message); }
+});
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#offer').hidden) $('#offer-dismiss').click(); });
 
 let searchTimer;
