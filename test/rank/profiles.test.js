@@ -30,7 +30,7 @@ test('Yasuo with combat stats: shares and mitigation ratio from aramkit', () => 
   near(p.physicalShare, 35093 / (35093 + 5058));
   near(p.magicShare, 1 - p.physicalShare);
   near(p.frontline, 0.4 * 0 + 0.3 * Math.min(1, Math.min(2, 74028 / 46272.043) / 2) + 0.3 * 0.6 + 0.1);
-  assert.equal(p.sustain, 0);        // heals+shields ≈ 0
+  near(p.sustain, 0);                // heals+shields ≈ 0
   near(p.cc, (0.5 + Math.min(1, (29.3 / 33.9) / 2)) / 2);
   assert.equal(p.poke, 0);           // melee
   near(p.burst, 1);                  // damage 1 × assassin

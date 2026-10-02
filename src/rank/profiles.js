@@ -3,10 +3,7 @@
 export const TRAITS = Object.freeze(['frontline', 'engage', 'peel', 'sustain', 'cc', 'poke']);
 const STYLE_KEYS = ['damage', 'durability', 'crowdControl', 'mobility', 'utility'];
 
-// Clamp to [0,1] and round to hundredths: these are heuristic 0..1 scores, and rounding away
-// floating-point dust (e.g. a near-zero ratio from a single stray combat point) keeps near-zero
-// inputs reading as exactly 0 instead of leaking noise like 0.0005.
-const clamp01 = (v) => Math.round(Math.max(0, Math.min(1, v)) * 100) / 100;
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const mean = (...xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 export function EMPTY_PROFILE(id, name = `#${id}`) {
