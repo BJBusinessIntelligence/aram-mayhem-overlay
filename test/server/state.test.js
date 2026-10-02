@@ -194,7 +194,9 @@ test('recommend: computed on lineup change, carried in snapshot with rev, build 
 });
 
 test('recommend: a late result for an older lineup is dropped', async () => {
-  const rec = fakeRecommender({ delayMs: 30 });
+  // rev 1's compute is slower (~40ms) than rev 2's (~5ms), so rev 2 finishes first and
+  // rev 1's late result must be dropped by the superseded-lineupRev guard, not by timing luck.
+  const rec = fakeRecommender({ delays: [40, 5] });
   const s = createAppState({ repository: fakeRepo(), recommender: rec });
   const first = s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
   const second = s.setGame(game({ phase: 'champselect', championId: 99, lineup: lineup({ held: 99, bench: [157] }), lineupRev: 2 }));

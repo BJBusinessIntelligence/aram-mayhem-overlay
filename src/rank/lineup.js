@@ -106,8 +106,12 @@ export function rankCandidates({ held, bench = [], allies = [], rankings = null,
     let strength = rankings ? strengthPercentile(id, rankings, weights) : null;
     if (strength == null) {
       warnings.push(rankings ? 'not in rankings' : 'rankings unavailable');
-      const wr = shrunkWinRate(champ?.winRate, champ?.games, weights.shrinkGames);
-      strength = clamp01((wr - weights.fallbackStrength.floor) / weights.fallbackStrength.range);
+      if (champ == null) {
+        strength = 0.5; // missing both rankings row and champ data → neutral, no basis to guess either way
+      } else {
+        const wr = shrunkWinRate(champ.winRate, champ.games, weights.shrinkGames);
+        strength = clamp01((wr - weights.fallbackStrength.floor) / weights.fallbackStrength.range);
+      }
     }
     const games = row?.games ?? champ?.games ?? 0;
     if (games < weights.lowSampleGames) warnings.push(`low sample (${Math.round(games / 1000)}k games)`);

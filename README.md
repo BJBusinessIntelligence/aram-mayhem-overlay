@@ -162,7 +162,7 @@ a real champ-select session for fixtures with `node scripts/lcu-dump.js` during 
 
     src/config.js       env/argv
     src/data/           cache, repository, champion index, aramkit + blitz adapters, cdragon resources
-    src/rank/           augment ranking, build selection (pure)
+    src/rank/           augment ranking, build selection, trait profiles, lineup scoring and weights (pure)
     src/game/           lockfile, lcu, liveclient, detector
     src/server/         state store, http routes
     public/             page

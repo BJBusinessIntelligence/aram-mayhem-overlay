@@ -97,6 +97,15 @@ test('rankings: map by id, cached per version, one fetch', async () => {
   assert.equal(client2.calls.rankings, 0, 'the second adapter instance reads the disk cache: no new rankings fetch on its own client');
 });
 
+test('rankings: a null row is dropped instead of throwing', async () => {
+  const { adapter, client } = setup();
+  const original = fixture('aramkit', 'champion-rankings-all.json');
+  client.rankings = async () => ({ ...original, rows: [null, ...original.rows] });
+  const r = await adapter.rankings('all');
+  assert.deepEqual(r.byId[157], { id: 157, rank: 1, tier: 'S', winRate: 0.5764, pickRate: 0.1083, games: 804398 });
+  assert.equal(Object.keys(r.byId).length, original.rows.length);
+});
+
 test('averages: combat shape', async () => {
   const { adapter } = setup();
   const a = await adapter.averages('all');

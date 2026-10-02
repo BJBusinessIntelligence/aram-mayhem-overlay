@@ -79,7 +79,7 @@ export function createAramkitAdapter({ client, cache, now = Date.now, versionTtl
     },
     rankings: (bracket = 'all') => versionedFile('champion-rankings', bracket, client.rankings, (raw, version) => ({
       version,
-      byId: Object.fromEntries((raw?.rows ?? []).filter((r) => Number.isInteger(r.id)).map((r) => [r.id, {
+      byId: Object.fromEntries((raw?.rows ?? []).filter((r) => r && Number.isInteger(r.id)).map((r) => [r.id, {
         id: r.id, rank: r.rank ?? null, tier: r.tier ?? null, winRate: r.winRate ?? null, pickRate: r.pickRate ?? null, games: r.sampleCount ?? 0,
       }])),
     })),

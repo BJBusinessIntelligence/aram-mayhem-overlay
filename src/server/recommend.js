@@ -38,6 +38,10 @@ export function createRecommender({
       });
     }));
 
+    if (rankings === null && Object.keys(champData).length === 0 && ids.length > 0) {
+      throw new Error('no champion data available: ' + warnings.join('; '));
+    }
+
     const allyProfiles = allies.map((id) => profiles[id]).filter(Boolean);
     const enemyProfiles = enemies.map((id) => profiles[id]).filter(Boolean);
     const candidates = rankCandidates({ held, bench, allies: allyProfiles, rankings, profiles, champData, rules: synergyRules, weights });

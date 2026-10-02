@@ -7,5 +7,5 @@
   { "a": "Lucian", "b": "Braum", "delta": 0.3, "reason": "Vulnerable passive procs" },
   { "a": "Xayah", "b": "Rakan", "delta": 0.4, "reason": "lovers' recall + engage" },
   { "a": "Twitch", "b": "Lulu", "delta": 0.3, "reason": "hypercarry enabling" },
-  { "a": "Master Yi", "b": "Taric", "delta": 0.3, "reason": "invulnerability window" }
+  { "a": "MasterYi", "b": "Taric", "delta": 0.3, "reason": "invulnerability window" }
 ]

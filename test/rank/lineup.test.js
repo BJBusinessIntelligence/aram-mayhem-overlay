@@ -82,6 +82,9 @@ test('rankCandidates: held flagged, sorted by score, reasons and warnings, fallb
   const noRank = rankCandidates({ held: 1, bench: [], allies, rankings: null, profiles, champData, rules: [], weights: WEIGHTS });
   assert.ok(noRank[0].components.strength > 0.5);
   assert.ok(noRank[0].warnings.includes('rankings unavailable'));
+  // missing both a rankings row and champ data → neutral 0.5, not the shrunk-undefined-win-rate fallback
+  const noData = rankCandidates({ held: 99, bench: [], allies, rankings, profiles: {}, champData: {}, rules: [], weights: WEIGHTS });
+  assert.equal(noData.find((c) => c.id === 99).components.strength, 0.5);
 });
 
 test('teamSummary', () => {

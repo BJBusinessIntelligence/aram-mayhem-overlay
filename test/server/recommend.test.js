@@ -59,6 +59,14 @@ test('degradation: rankings down → strength fallback with warning; champ fetch
   assert.ok(lux.warnings.includes('combat stats unavailable'));
 });
 
+test('total failure: rankings down and every champion fetch fails throws', async () => {
+  const rec = createRecommender(deps({ failRankings: true, failChamp: [157, 99, 54] }));
+  await assert.rejects(
+    rec.compute({ held: 157, bench: [99], allies: [54], enemies: [], bracket: 'all' }),
+    /no champion data available/,
+  );
+});
+
 test('debug dump writes recommend-<ts>.json and prunes', async () => {
   const writes = []; const rms = [];
   const fs = { mkdir: async () => {}, writeFile: async (p, d) => writes.push(p), readdir: async () => ['recommend-1.json', 'recommend-2.json', 'recommend-3.json'], rm: async (p) => rms.push(p) };
