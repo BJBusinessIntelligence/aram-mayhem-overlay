@@ -5,6 +5,9 @@ export const WEIGHTS = Object.freeze({
   fitNeutral: 0.25,          // fit value assumed when no ally is known
   shrinkGames: 20_000,       // K in (wr·n + 0.5·K)/(n + K)
   lowSampleGames: 50_000,    // below this: low-sample warning + confidence hit
+  fallbackStrength: Object.freeze({ floor: 0.45, range: 0.15 }), // maps shrunk win rate to 0..1 when rankings are unavailable
+  defaultDamageShare: 0.2,   // assumed damageShare for a profile that doesn't report one
+  teamSize: 4,               // full ARAM side size, used to scale fit confidence and ally knowledge
   reasonMinGain: 0.15,       // trait gain needed to become a reason
   reasonMinSynergy: 0.4,
   lackThreshold: 0.4,        // coverage below this after adding the candidate → "team still lacks"

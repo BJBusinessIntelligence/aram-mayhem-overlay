@@ -25,17 +25,17 @@ export function strengthPercentile(id, rankings, weights = WEIGHTS) {
 }
 
 // Noisy-OR per trait: a second tank adds much less than the first.
-export function coverage(profiles) {
+export function coverage(profiles, weights = WEIGHTS) {
   const out = {};
   for (const t of TRAITS) out[t] = 1 - profiles.reduce((acc, p) => acc * (1 - clamp01(p?.[t] ?? 0)), 1);
-  const w = profiles.reduce((s, p) => s + (p?.damageShare ?? 0.2), 0);
-  out.physicalShare = w > 0 ? profiles.reduce((s, p) => s + (p?.physicalShare ?? 0.5) * (p?.damageShare ?? 0.2), 0) / w : 0.5;
+  const w = profiles.reduce((s, p) => s + (p?.damageShare ?? weights.defaultDamageShare), 0);
+  out.physicalShare = w > 0 ? profiles.reduce((s, p) => s + (p?.physicalShare ?? 0.5) * (p?.damageShare ?? weights.defaultDamageShare), 0) / w : 0.5;
   return out;
 }
 
 export function fitScore(candidate, allies, weights = WEIGHTS) {
-  const before = coverage(allies);
-  const after = coverage([...allies, candidate]);
+  const before = coverage(allies, weights);
+  const after = coverage([...allies, candidate], weights);
   const gains = {};
   let sum = 0; let wsum = 0;
   for (const t of TRAITS) {
@@ -45,7 +45,7 @@ export function fitScore(candidate, allies, weights = WEIGHTS) {
   const balanceGain = clamp01(2 * Math.max(0, Math.abs(before.physicalShare - 0.5) - Math.abs(after.physicalShare - 0.5)));
   sum += weights.traits.balance * balanceGain; wsum += weights.traits.balance;
   const raw = wsum > 0 ? sum / wsum : 0;
-  const known = Math.min(4, allies.length) / 4;
+  const known = Math.min(weights.teamSize, allies.length) / weights.teamSize;
   const fit = weights.fitNeutral + (raw - weights.fitNeutral) * known;
   return { fit: clamp01(fit), raw, gains, balanceGain, after };
 }
@@ -74,7 +74,7 @@ export function synergyScore(candidate, allies, rules = []) {
 }
 
 export function confidenceFor({ knownAllies, games, profile }, weights = WEIGHTS) {
-  const failures = [knownAllies < 4, (games ?? 0) < weights.lowSampleGames, !(profile?.sources?.cdragon && profile?.sources?.aramkit)].filter(Boolean).length;
+  const failures = [knownAllies < weights.teamSize, (games ?? 0) < weights.lowSampleGames, !(profile?.sources?.cdragon && profile?.sources?.aramkit)].filter(Boolean).length;
   return failures === 0 ? 'high' : failures === 1 ? 'medium' : 'low';
 }
 
@@ -107,7 +107,7 @@ export function rankCandidates({ held, bench = [], allies = [], rankings = null,
     if (strength == null) {
       warnings.push(rankings ? 'not in rankings' : 'rankings unavailable');
       const wr = shrunkWinRate(champ?.winRate, champ?.games, weights.shrinkGames);
-      strength = clamp01((wr - 0.45) / 0.15);
+      strength = clamp01((wr - weights.fallbackStrength.floor) / weights.fallbackStrength.range);
     }
     const games = row?.games ?? champ?.games ?? 0;
     if (games < weights.lowSampleGames) warnings.push(`low sample (${Math.round(games / 1000)}k games)`);
