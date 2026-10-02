@@ -151,17 +151,20 @@ test('getChampData returns data only for the current champion', async () => {
   assert.equal(s.getChampData().champion.id, 62);
 });
 
-function fakeRecommender({ delayMs = 0, fail = false } = {}) {
+// `delays` gives a per-call delay (consumed in order) so a later compute can resolve first.
+function fakeRecommender({ delayMs = 0, delays = null, fail = false } = {}) {
   const calls = [];
+  const queue = delays ? delays.slice() : null;
   return {
     calls,
     async compute(input) {
       calls.push(input);
-      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+      const wait = queue ? queue.shift() ?? 0 : delayMs;
+      if (wait) await new Promise((r) => setTimeout(r, wait));
       if (fail) throw new Error('recommender exploded');
       const p = (id) => ({ ...EMPTY_PROFILE(id, `C${id}`), frontline: 0 });
       return {
-        recommend: { context: input.enemies.length ? 'ingame' : 'champselect', team: { knownAllies: input.allies.length, coverage: {}, physicalShare: 0.5 }, candidates: [{ id: input.held, held: true, score: 50, reasons: [], warnings: [] }], warnings: [] },
+        recommend: { context: input.enemies.length ? 'ingame' : 'champselect', team: { knownAllies: input.allies.length, bracket: input.bracket, coverage: {}, physicalShare: 0.5 }, candidates: [{ id: input.held, held: true, score: 50, reasons: [], warnings: [] }], warnings: [] },
         profiles: { allies: input.allies.map(p), enemies: input.enemies.map(p) },
         itemCategories: {},
       };
@@ -222,4 +225,41 @@ test('without a recommender the payload has recommend null and build context non
   await s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
   assert.equal(s.snapshot().recommend, null);
   assert.equal(s.snapshot().build.context, 'none');
+});
+
+test('recommend: recomputed only when the bracket actually changes', async () => {
+  const rec = fakeRecommender();
+  const s = createAppState({ repository: fakeRepo(), recommender: rec });
+  await s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
+  assert.equal(rec.calls.length, 1);
+  await s.setView({ bracket: 'all' });
+  assert.equal(rec.calls.length, 1, 'same bracket → no recompute');
+  await s.setView({ bracket: 'high' });
+  assert.equal(rec.calls.length, 2);
+  assert.equal(rec.calls[1].bracket, 'high');
+  assert.equal(s.snapshot().recommend.team.bracket, 'high');
+  await s.setView({ stage: 2 });
+  assert.equal(rec.calls.length, 2, 'stage change → no recompute');
+});
+
+test('recommend: two bracket recomputes at the same lineupRev keep the newest result', async () => {
+  const rec = fakeRecommender({ delays: [0, 40, 5] });
+  const s = createAppState({ repository: fakeRepo(), recommender: rec });
+  await s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
+  const high = s.setView({ bracket: 'high' });
+  const back = s.setView({ bracket: 'all' });
+  await Promise.all([high, back]);
+  assert.deepEqual(rec.calls.map((c) => c.bracket), ['all', 'high', 'all']);
+  assert.equal(s.snapshot().recommend.team.bracket, 'all', 'the slower earlier compute must not win');
+});
+
+test('recommend: clearing on phase none invalidates an in-flight compute', async () => {
+  const rec = fakeRecommender({ delayMs: 30 });
+  const s = createAppState({ repository: fakeRepo(), recommender: rec });
+  const pending = s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
+  // same lineupRev, so only the clear itself can invalidate the compute already in flight
+  await s.setGame(game({ phase: 'none', lineup: lineup(), lineupRev: 1 }));
+  await pending;
+  assert.equal(s.snapshot().recommend, null);
+  assert.equal(s.snapshot().build, null);
 });

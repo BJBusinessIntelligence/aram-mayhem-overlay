@@ -35,6 +35,7 @@ export function createAppState({ repository, recommender = null, now = Date.now,
   let recommend = null;      // { rev, context, team, candidates, warnings }
   let buildContext = null;   // { allies, enemies, itemCategories }
   let pendingRecommend = Promise.resolve();
+  let recSeq = 0;
 
   function pushError(scope, message) {
     errors.unshift({ scope, message, at: now() });
@@ -57,17 +58,22 @@ export function createAppState({ repository, recommender = null, now = Date.now,
     }
   }
 
-  // Recommending is keyed on game.lineupRev: a result that lands after the lineup moved on is dropped.
+  // A result is dropped when a newer compute has started (recSeq) or the lineup moved on
+  // (lineupRev). The sequence alone is not enough to tell which lineup a result belongs to, and
+  // the revision alone cannot separate two computes at the same revision — e.g. two bracket
+  // changes in flight at once, where the slower earlier one must not overwrite the newer one.
   async function loadRecommend(g) {
     const rev = g.lineupRev;
+    const seq = ++recSeq;
+    const superseded = () => seq !== recSeq || game.lineupRev !== rev;
     try {
       const r = await recommender.compute({ ...g.lineup, bracket: view.bracket });
-      if (game.lineupRev !== rev) return; // superseded
+      if (superseded()) return;
       recommend = { rev, ...r.recommend };
       buildContext = { allies: r.profiles.allies, enemies: g.phase === 'ingame' ? r.profiles.enemies : null, itemCategories: r.itemCategories };
-      for (const w of r.recommend.warnings) log(`[recommend] ${w}`);
+      for (const w of r.recommend.warnings ?? []) log(`[recommend] ${w}`);
     } catch (e) {
-      if (game.lineupRev !== rev) return;
+      if (superseded()) return;
       recommend = null; buildContext = null;
       pushError('recommend', e.message);
     }
@@ -91,16 +97,18 @@ export function createAppState({ repository, recommender = null, now = Date.now,
       if (game.phase !== 'ingame') offer = null;
       if (next.error && next.error !== prevError) pushError('game', next.error);
       if (recommender) {
-        if (game.phase === 'none') { recommend = null; buildContext = null; }
+        // recSeq++ makes the clear authoritative: a compute already in flight cannot restore it.
+        if (game.phase === 'none') { recommend = null; buildContext = null; recSeq++; }
         else if (game.phase !== 'loading' && game.lineupRev !== prevRev) pendingRecommend = loadRecommend(game);
       }
       return Promise.all([ensureLoaded(), pendingRecommend]).then(() => undefined);
     },
     setView(patch = {}) {
+      const prevBracket = view.bracket;
       if (patch.stage !== undefined) view.stage = patch.stage;
       if (patch.bracket !== undefined) view.bracket = patch.bracket;
       // The bracket feeds rankings, averages and per-champion data, so a change invalidates the recommendation.
-      if (recommender && patch.bracket !== undefined && game.lineupRev > 0 && game.phase !== 'none') pendingRecommend = loadRecommend(game);
+      if (recommender && view.bracket !== prevBracket && game.lineupRev > 0 && game.phase !== 'none') pendingRecommend = loadRecommend(game);
       return Promise.all([ensureLoaded(), pendingRecommend]).then(() => undefined);
     },
     refresh: () => ensureLoaded({ force: true }),
