@@ -1,0 +1,18 @@
+{
+  "Malphite": { "engage": 1, "frontline": 1, "note": "Unstoppable Force" },
+  "Janna": { "peel": 1, "note": "Monsoon + shields" },
+  "Lulu": { "peel": 1, "sustain": 0.8 },
+  "Soraka": { "sustain": 1, "peel": 0.6 },
+  "Blitzcrank": { "engage": 1, "note": "hook" },
+  "Thresh": { "engage": 0.9, "peel": 0.9 },
+  "Nautilus": { "engage": 1, "frontline": 1 },
+  "Leona": { "engage": 1, "frontline": 1 },
+  "Alistar": { "engage": 1, "peel": 0.9 },
+  "Amumu": { "engage": 1 },
+  "Yasuo": { "frontline": 0.3, "note": "windwall is not a frontline" },
+  "Ziggs": { "poke": 1 },
+  "Xerath": { "poke": 1 },
+  "Jayce": { "poke": 0.9 },
+  "Nidalee": { "poke": 0.9 },
+  "Zyra": { "poke": 0.8 }
+}
