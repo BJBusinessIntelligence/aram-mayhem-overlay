@@ -63,3 +63,10 @@ test('ocr overrides from env and argv', () => {
   assert.equal(d.ocrDebug, true);
   assert.throws(() => loadConfig({ env: { OCR_REGION: 'left' }, argv: [], platform: 'win32' }), /Invalid ocr region/);
 });
+
+test('rec-debug flag and env', () => {
+  assert.equal(loadConfig({}).recDebug, false);
+  assert.equal(loadConfig({ argv: ['--rec-debug'] }).recDebug, true);
+  assert.equal(loadConfig({ env: { REC_DEBUG: 'true' } }).recDebug, true);
+  assert.equal(loadConfig({ env: { REC_DEBUG: 'false' } }).recDebug, false);
+});

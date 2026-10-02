@@ -40,6 +40,19 @@ export function parseView(q) {
   return out;
 }
 
+export function resolveChampionIds(list, champIndex) {
+  const ids = []; const unknown = [];
+  for (const v of Array.isArray(list) ? list : []) {
+    let hit = null;
+    if (Number.isInteger(v)) hit = champIndex.byId(v);
+    else if (typeof v === 'string') {
+      hit = champIndex.byRiotId(v) ?? champIndex.search(v, 5).find((c) => c.name.toLowerCase() === v.trim().toLowerCase()) ?? null;
+    }
+    if (hit) ids.push(hit.id); else unknown.push(String(v));
+  }
+  return { ids, unknown };
+}
+
 export function createServer({ state, champIndex, publicDir, watcher = null }) {
   return http.createServer(async (req, res) => {
     try {
@@ -96,6 +109,20 @@ export function createServer({ state, champIndex, publicDir, watcher = null }) {
         if (typeof body.enabled !== 'boolean') return send(res, 400, { error: 'enabled must be boolean' });
         watcher.setEnabled(body.enabled);
         return send(res, 200, state.snapshot());
+      }
+      if (req.method === 'POST' && p === '/api/recommend/preview') {
+        const body = JSON.parse((await readBody(req)) || '{}');
+        const held = resolveChampionIds([body.held], champIndex);
+        const bench = resolveChampionIds(body.bench ?? [], champIndex);
+        const allies = resolveChampionIds(body.allies ?? [], champIndex);
+        const enemies = resolveChampionIds(body.enemies ?? [], champIndex);
+        const unknown = [...held.unknown, ...bench.unknown, ...allies.unknown, ...enemies.unknown].filter((u) => u !== 'undefined' && u !== 'null');
+        if (unknown.length) return send(res, 400, { error: `unknown champions: ${unknown.join(', ')}` });
+        if (held.ids.length !== 1) return send(res, 400, { error: 'held champion required' });
+        let result;
+        try { result = await state.previewRecommend({ held: held.ids[0], bench: bench.ids, allies: allies.ids, enemies: enemies.ids }); }
+        catch (e) { return send(res, /not configured/.test(e.message) ? 503 : 502, { error: e.message }); }
+        return send(res, 200, result);
       }
       return send(res, 404, { error: 'not found' });
     } catch (e) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createServer, parseView } from '../../src/server/http.js';
+import { createServer, parseView, resolveChampionIds } from '../../src/server/http.js';
 import { createChampionIndex } from '../../src/data/champions.js';
 import { DataUnavailable } from '../../src/data/model.js';
 import { fixture } from '../helpers/fixtures.js';
@@ -20,6 +20,7 @@ const state = {
   setView: async (v) => { viewCalls.push(v); },
   refresh: async () => { refreshCalls++; },
   preview: async (id, opts) => { if (id === 404) throw new DataUnavailable([new Error('x')]); return { champ: { id }, view: opts }; },
+  previewRecommend: async (input) => ({ recommend: { preview: true, rev: null, context: input.enemies.length ? 'ingame' : 'champselect', candidates: [], team: {}, warnings: [] }, build: null, input }),
 };
 const champIndex = createChampionIndex(fixture('aramkit', 'resources-champions.json'));
 const server = createServer({ state, champIndex, publicDir });
@@ -159,4 +160,21 @@ test('parseView', () => {
   assert.deepEqual(parseView({}), {});
   assert.throws(() => parseView({ stage: '5' }), /invalid stage/);
   assert.throws(() => parseView({ bracket: 'x' }), /invalid bracket/);
+});
+
+test('resolveChampionIds accepts ids, riotIds and display names', () => {
+  const r = resolveChampionIds([157, 'MonkeyKing', 'Wukong', 'lux', 'Nope', 0], champIndex);
+  assert.deepEqual(r.ids, [157, 62, 62, 99]);
+  assert.deepEqual(r.unknown, ['Nope', '0']);
+});
+
+test('POST /api/recommend/preview resolves names and rejects unknown ones', async () => {
+  const ok = await post('/api/recommend/preview', { held: 'Yasuo', bench: [99, 'Malphite'], allies: ['Annie', 'Wukong'], enemies: [] });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(ok.body.input, { held: 157, bench: [99, 54], allies: [1, 62], enemies: [] });
+  const bad = await post('/api/recommend/preview', { held: 'Yasuo', bench: ['Nope'] });
+  assert.equal(bad.status, 400);
+  assert.match(bad.body.error, /unknown champions: Nope/);
+  const noHeld = await post('/api/recommend/preview', { bench: [99] });
+  assert.equal(noHeld.status, 400);
 });

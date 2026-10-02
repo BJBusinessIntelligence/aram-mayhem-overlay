@@ -12,6 +12,7 @@ export const DEFAULTS = Object.freeze({
   ocrActiveMs: 500,
   ocrRegion: 'band',
   ocrDebug: false,
+  recDebug: false,
 });
 
 // --key=value | --key value | --key   (bare flag → 'true')
@@ -72,6 +73,9 @@ export function loadConfig({ env = {}, argv = [], platform = process.platform } 
   }
   const debug = pick('ocr-debug', 'OCR_DEBUG');
   if (debug !== undefined) c.ocrDebug = bool(debug);
+
+  const rec = pick('rec-debug', 'REC_DEBUG');
+  if (rec !== undefined) c.recDebug = bool(rec);
 
   return c;
 }

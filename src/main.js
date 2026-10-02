@@ -11,7 +11,9 @@ import { createBlitzClient } from './data/blitz/client.js';
 import { createBlitzAdapter } from './data/blitz/adapter.js';
 import { createRepository } from './data/repository.js';
 import { createChampionIndex, createChampionIndexFromCdragon } from './data/champions.js';
+import { createCdragonChampions } from './data/cdragon/champion.js';
 import { createAppState } from './server/state.js';
+import { createRecommender } from './server/recommend.js';
 import { createServer } from './server/http.js';
 import { httpsGetJson } from './util/httpsJson.js';
 import { readLockfile } from './game/lockfile.js';
@@ -53,7 +55,18 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
   const repository = createRepository({ primary, fallback, cache });
   log(`data: primary=${primary.name} fallback=${fallback && fallback.enabled ? fallback.name : 'disabled'}`);
 
-  const state = createAppState({ repository, log });
+  const cdragonChampions = createCdragonChampions({ cache, log });
+  const readJson = async (file, fallback) => {
+    try { return JSON.parse(await fs.readFile(path.join(here, '..', 'data', file), 'utf8')); }
+    catch (e) { log(`WARN ${file} not loaded: ${e.message}`); return fallback; }
+  };
+  const recommender = createRecommender({
+    repository, aramkit, cdragonChampions, cdragon, champIndex,
+    overrides: await readJson('profile-overrides.json', {}), synergyRules: await readJson('synergy-rules.json', []),
+    debugDir: path.join('data', 'debug'), autoDump: cfg.recDebug, fs, path, log,
+  });
+  const state = createAppState({ repository, recommender, log });
+  log(`recommend: enabled debug=${cfg.recDebug}`);
   if (champIndex.size === 0) state.pushError('startup', 'champion index unavailable; search and detection disabled until aramkit is reachable');
 
   const lcu = createLcuClient({ readLockfile: () => readLockfile(cfg.lockfilePath, { fs }), getJson: httpsGetJson });
