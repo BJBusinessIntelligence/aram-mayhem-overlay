@@ -4,7 +4,7 @@ import { pickBuild } from '../rank/builds.js';
 
 export const EMPTY_OCR = Object.freeze({ enabled: false, running: false, lastCaptureMs: null, lastCaptureAt: null, lastError: null });
 
-export function buildPayload({ game, loading, champData, view, source, stale, errors, offer = null, ocr = EMPTY_OCR }) {
+export function buildPayload({ game, loading, champData, view, source, stale, errors, offer = null, ocr = EMPTY_OCR, recommend = null, buildContext = null }) {
   const augments = champData ? shapeAugments(champData, { stage: view.stage, level: game.level }) : null;
   return {
     game,
@@ -12,17 +12,18 @@ export function buildPayload({ game, loading, champData, view, source, stale, er
     champ: champData ? { ...champData.champion, source } : null,
     view: { stage: view.stage, bracket: view.bracket, stageUsed: augments ? augments.stageUsed : null },
     augments: augments ? { columns: augments.columns, unknown: augments.unknown } : null,
-    build: champData ? pickBuild(champData) : null,
+    build: champData ? pickBuild(champData, { context: buildContext }) : null,
     meta: champData
       ? { source, version: champData.sourceVersion, dataDate: champData.dataDate, fetchedAt: champData.fetchedAt, bracket: champData.bracket, stale: !!stale }
       : null,
     errors,
     offer,
     ocr,
+    recommend,
   };
 }
 
-export function createAppState({ repository, now = Date.now, maxErrors = 10, log = () => {} }) {
+export function createAppState({ repository, recommender = null, now = Date.now, maxErrors = 10, log = () => {} }) {
   let game = { ...EMPTY_GAME };
   const view = { stage: 'auto', bracket: 'all' };
   let current = null; // { id, bracket, data, source, stale }
@@ -31,6 +32,9 @@ export function createAppState({ repository, now = Date.now, maxErrors = 10, log
   const errors = [];
   let offer = null;
   let ocr = { ...EMPTY_OCR };
+  let recommend = null;      // { rev, context, team, candidates, warnings }
+  let buildContext = null;   // { allies, enemies, itemCategories }
+  let pendingRecommend = Promise.resolve();
 
   function pushError(scope, message) {
     errors.unshift({ scope, message, at: now() });
@@ -53,6 +57,22 @@ export function createAppState({ repository, now = Date.now, maxErrors = 10, log
     }
   }
 
+  // Recommending is keyed on game.lineupRev: a result that lands after the lineup moved on is dropped.
+  async function loadRecommend(g) {
+    const rev = g.lineupRev;
+    try {
+      const r = await recommender.compute({ ...g.lineup, bracket: view.bracket });
+      if (game.lineupRev !== rev) return; // superseded
+      recommend = { rev, ...r.recommend };
+      buildContext = { allies: r.profiles.allies, enemies: g.phase === 'ingame' ? r.profiles.enemies : null, itemCategories: r.itemCategories };
+      for (const w of r.recommend.warnings) log(`[recommend] ${w}`);
+    } catch (e) {
+      if (game.lineupRev !== rev) return;
+      recommend = null; buildContext = null;
+      pushError('recommend', e.message);
+    }
+  }
+
   function ensureLoaded({ force = false } = {}) {
     const id = game.championId;
     if (!id) return Promise.resolve();
@@ -66,15 +86,22 @@ export function createAppState({ repository, now = Date.now, maxErrors = 10, log
     pushError,
     setGame(next) {
       const prevError = game.error;
+      const prevRev = game.lineupRev;
       game = { ...next };
       if (game.phase !== 'ingame') offer = null;
       if (next.error && next.error !== prevError) pushError('game', next.error);
-      return ensureLoaded();
+      if (recommender) {
+        if (game.phase === 'none') { recommend = null; buildContext = null; }
+        else if (game.phase !== 'loading' && game.lineupRev !== prevRev) pendingRecommend = loadRecommend(game);
+      }
+      return Promise.all([ensureLoaded(), pendingRecommend]).then(() => undefined);
     },
     setView(patch = {}) {
       if (patch.stage !== undefined) view.stage = patch.stage;
       if (patch.bracket !== undefined) view.bracket = patch.bracket;
-      return ensureLoaded();
+      // The bracket feeds rankings, averages and per-champion data, so a change invalidates the recommendation.
+      if (recommender && patch.bracket !== undefined && game.lineupRev > 0 && game.phase !== 'none') pendingRecommend = loadRecommend(game);
+      return Promise.all([ensureLoaded(), pendingRecommend]).then(() => undefined);
     },
     refresh: () => ensureLoaded({ force: true }),
     snapshot() {
@@ -88,11 +115,23 @@ export function createAppState({ repository, now = Date.now, maxErrors = 10, log
         errors: errors.slice(),
         offer,
         ocr: { ...ocr },
+        recommend,
+        buildContext,
       });
     },
     async preview(id, { bracket = 'all', stage = 'auto', force = false } = {}) {
       const r = await repository.getChamp(id, bracket, { force });
       return buildPayload({ game, loading: false, champData: r.data, view: { stage, bracket }, source: r.source, stale: r.stale, errors: (r.errors ?? []).map((e) => ({ scope: 'data', message: e.message, at: now() })) });
+    },
+    async previewRecommend({ held = null, bench = [], allies = [], enemies = [] }) {
+      if (!recommender) throw new Error('recommender not configured');
+      const r = await recommender.compute({ held, bench, allies, enemies, bracket: view.bracket });
+      let build = null;
+      if (held) {
+        const data = (await repository.getChamp(held, view.bracket)).data;
+        build = pickBuild(data, { context: { allies: r.profiles.allies, enemies: enemies.length ? r.profiles.enemies : null, itemCategories: r.itemCategories } });
+      }
+      return { recommend: { rev: null, preview: true, ...r.recommend }, build };
     },
     getChampData: () => (current && current.id === game.championId ? current.data : null),
     getOffer: () => offer,

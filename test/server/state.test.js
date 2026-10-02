@@ -4,6 +4,7 @@ import { createAppState, buildPayload } from '../../src/server/state.js';
 import { EMPTY_GAME } from '../../src/data/model.js';
 import { normalizeAramkit } from '../../src/data/aramkit/normalize.js';
 import { fixture, aramkitResources } from '../helpers/fixtures.js';
+import { EMPTY_PROFILE } from '../../src/rank/profiles.js';
 
 const yasuo = normalizeAramkit(fixture('aramkit', 'champion-details-157-all.json'), aramkitResources(), { version: '16.19', dataDate: '2026-09-24', bracket: 'all', fetchedAt: 5 });
 
@@ -148,4 +149,77 @@ test('getChampData returns data only for the current champion', async () => {
   assert.equal(s.getChampData().champion.id, 157);
   await s.setGame(game({ championId: 62 }));
   assert.equal(s.getChampData().champion.id, 62);
+});
+
+function fakeRecommender({ delayMs = 0, fail = false } = {}) {
+  const calls = [];
+  return {
+    calls,
+    async compute(input) {
+      calls.push(input);
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+      if (fail) throw new Error('recommender exploded');
+      const p = (id) => ({ ...EMPTY_PROFILE(id, `C${id}`), frontline: 0 });
+      return {
+        recommend: { context: input.enemies.length ? 'ingame' : 'champselect', team: { knownAllies: input.allies.length, coverage: {}, physicalShare: 0.5 }, candidates: [{ id: input.held, held: true, score: 50, reasons: [], warnings: [] }], warnings: [] },
+        profiles: { allies: input.allies.map(p), enemies: input.enemies.map(p) },
+        itemCategories: {},
+      };
+    },
+  };
+}
+const lineup = (over) => ({ held: 157, bench: [99], allies: [1, 62, 25, 103], enemies: [], ...over });
+
+test('recommend: computed on lineup change, carried in snapshot with rev, build gets context', async () => {
+  const rec = fakeRecommender();
+  const s = createAppState({ repository: fakeRepo(), recommender: rec });
+  await s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
+  let p = s.snapshot();
+  assert.equal(p.recommend.rev, 1);
+  assert.equal(p.recommend.context, 'champselect');
+  assert.equal(p.build.context, 'allies');
+  await s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1, level: null }));
+  assert.equal(rec.calls.length, 1, 'same rev → no recompute');
+  await s.setGame(game({ phase: 'ingame', championId: 157, level: 3, lineup: lineup({ bench: [], enemies: [99, 54, 222, 40, 21] }), lineupRev: 2 }));
+  p = s.snapshot();
+  assert.equal(rec.calls.length, 2);
+  assert.equal(p.recommend.rev, 2);
+  assert.equal(p.build.context, 'both');
+  await s.setGame(game({ phase: 'none' }));
+  assert.equal(s.snapshot().recommend, null);
+  assert.equal(s.snapshot().build, null);
+});
+
+test('recommend: a late result for an older lineup is dropped', async () => {
+  const rec = fakeRecommender({ delayMs: 30 });
+  const s = createAppState({ repository: fakeRepo(), recommender: rec });
+  const first = s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
+  const second = s.setGame(game({ phase: 'champselect', championId: 99, lineup: lineup({ held: 99, bench: [157] }), lineupRev: 2 }));
+  await Promise.all([first, second]);
+  assert.equal(s.snapshot().recommend.rev, 2);
+  assert.equal(s.snapshot().recommend.candidates[0].id, 99);
+});
+
+test('recommend: failure records an error and leaves recommend null', async () => {
+  const s = createAppState({ repository: fakeRepo(), recommender: fakeRecommender({ fail: true }) });
+  await s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
+  assert.equal(s.snapshot().recommend, null);
+  assert.equal(s.snapshot().errors[0].scope, 'recommend');
+});
+
+test('previewRecommend does not touch game state and returns build with context', async () => {
+  const rec = fakeRecommender();
+  const s = createAppState({ repository: fakeRepo(), recommender: rec });
+  const r = await s.previewRecommend({ held: 157, bench: [99], allies: [1, 62], enemies: [54] });
+  assert.equal(r.recommend.preview, true);
+  assert.equal(r.recommend.rev, null);
+  assert.equal(r.build.context, 'both');
+  assert.equal(s.snapshot().recommend, null);
+});
+
+test('without a recommender the payload has recommend null and build context none', async () => {
+  const s = createAppState({ repository: fakeRepo() });
+  await s.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
+  assert.equal(s.snapshot().recommend, null);
+  assert.equal(s.snapshot().build.context, 'none');
 });
