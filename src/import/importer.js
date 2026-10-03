@@ -49,7 +49,7 @@ export function createImporter({ state, repository, writer, setTimer = setTimeou
       let data;
       try { data = (await repository.getChamp(held, state.getView().bracket)).data; }
       catch (e) { status({ lastError: e.message }); return; }
-      const build = pickBuild(data, { context: state.getBuildContext() });
+      const build = pickBuild(data, { context }); // the one the change key was taken from
       const plan = planImport({ champ: data.champion, build, enemies: (g.lineup.enemies ?? []).length });
       // Each write is gated on its own content, so a changed build does not re-PATCH identical
       // spells and new spells do not re-PUT an identical item set. The champion is part of both
