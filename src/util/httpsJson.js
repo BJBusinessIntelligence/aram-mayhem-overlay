@@ -1,12 +1,10 @@
 import http from 'node:http';
 import https from 'node:https';
 
-// GET a JSON document. rejectUnauthorized=false is intended ONLY for 127.0.0.1
-// (League client / Live Client Data use self-signed certificates).
-export function httpsGetJson(url, { headers = {}, timeoutMs = 1500, rejectUnauthorized = false } = {}) {
+function request(url, { method, payload, headers = {}, timeoutMs = 1500, rejectUnauthorized = false }) {
   const mod = url.startsWith('http:') ? http : https;
   return new Promise((resolve, reject) => {
-    const req = mod.request(url, { method: 'GET', headers, rejectUnauthorized, timeout: timeoutMs }, (res) => {
+    const req = mod.request(url, { method, headers, rejectUnauthorized, timeout: timeoutMs }, (res) => {
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => {
@@ -19,6 +17,19 @@ export function httpsGetJson(url, { headers = {}, timeoutMs = 1500, rejectUnauth
     });
     req.on('timeout', () => req.destroy(new Error(`timeout after ${timeoutMs}ms: ${url}`)));
     req.on('error', reject);
+    if (payload != null) req.write(payload);
     req.end();
   });
+}
+
+// GET a JSON document. rejectUnauthorized=false is intended ONLY for 127.0.0.1
+// (League client / Live Client Data use self-signed certificates).
+export function httpsGetJson(url, { headers = {}, timeoutMs = 1500, rejectUnauthorized = false } = {}) {
+  return request(url, { method: 'GET', payload: null, headers, timeoutMs, rejectUnauthorized });
+}
+
+// Send a JSON body (PATCH/PUT/POST) and parse the JSON reply. Same TLS caveat as httpsGetJson.
+export function httpsSendJson(url, { method = 'POST', body = null, headers = {}, timeoutMs = 3000, rejectUnauthorized = false } = {}) {
+  const payload = body == null ? null : JSON.stringify(body);
+  return request(url, { method, payload, headers: { 'content-type': 'application/json', ...headers }, timeoutMs, rejectUnauthorized });
 }
