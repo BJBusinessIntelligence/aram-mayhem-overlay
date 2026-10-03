@@ -11,8 +11,12 @@ export function createImporter({ state, repository, writer, setTimer = setTimeou
   let stopped = true;
   let timer = null;
   let busy = false;
-  let lastFingerprint = null;
+  let spellsFp = null;
+  let itemSetFp = null;
   let last = { lastChampion: null, lastSpells: null, lastItemSetAt: null, lastError: null };
+
+  // Forget what has been written so the next tick re-imports from scratch.
+  function forget() { spellsFp = null; itemSetFp = null; }
 
   function status(patch = {}) {
     last = { ...last, ...patch };
@@ -33,25 +37,35 @@ export function createImporter({ state, repository, writer, setTimer = setTimeou
       catch (e) { status({ lastError: e.message }); return; }
       const build = pickBuild(data, { context: state.getBuildContext() });
       const plan = planImport({ champ: data.champion, build, enemies: (g.lineup.enemies ?? []).length });
-      // fingerprint() covers the phase, spells and block items; the champion is prepended because
-      // the item set is keyed per champion (title and uid), so a swap to a champion whose planned
-      // build happens to be identical still needs its own write.
-      const fp = `${data.champion.id}|${fingerprint(plan, g.phase)}`;
-      if (fp === lastFingerprint) return;
+      // Each write is gated on its own content, so a changed build does not re-PATCH identical
+      // spells and new spells do not re-PUT an identical item set. The champion is part of both
+      // keys: the item set is keyed per champion (title and uid), so a swap to a champion whose
+      // planned build happens to be identical still needs its own write.
+      // Both keys are remembered after the attempt, success or failure: a failed write is retried
+      // only when the plan changes, never every second, and the chip keeps showing lastError.
       const name = data.champion.name;
       let allOk = true;
       if (g.phase === 'champselect' && plan.spells) {
-        const r = await writer.setSpells(plan.spells.ids);
-        const label = plan.spells.names.join(' + ');
-        if (r.ok) { log(`[import] spells ${label} for ${name}`); status({ lastChampion: name, lastSpells: label, lastError: null }); }
-        else { allOk = false; log(`[import] spells failed: ${r.error}`); status({ lastError: `spells: ${r.error}` }); }
+        const fp = `${data.champion.id}|${plan.spells.ids.join('+')}`;
+        if (fp !== spellsFp) {
+          spellsFp = fp;
+          const r = await writer.setSpells(plan.spells.ids);
+          const label = plan.spells.names.join(' + ');
+          if (r.ok) { log(`[import] spells ${label} for ${name}`); status({ lastChampion: name, lastSpells: label, lastError: null }); }
+          else { allOk = false; log(`[import] spells failed: ${r.error}`); status({ lastError: `spells: ${r.error}` }); }
+        }
       }
       if (plan.itemSet) {
-        const r = await writer.upsertItemSet(plan.itemSet);
-        if (r.ok) { log(`[import] item set ${plan.itemSet.title} (${plan.itemSet.blocks.length} blocks)`); status({ lastChampion: name, lastItemSetAt: now(), ...(allOk ? { lastError: null } : {}) }); }
-        else { allOk = false; log(`[import] item set failed: ${r.error}`); status({ lastError: `item set: ${r.error}` }); }
+        // fingerprint() without the spells yields `${phase}|-|${blocks}`: the block items and the
+        // phase (the in-game plan carries the situational block) with no spell noise.
+        const fp = `${data.champion.id}|${fingerprint({ itemSet: plan.itemSet }, g.phase)}`;
+        if (fp !== itemSetFp) {
+          itemSetFp = fp;
+          const r = await writer.upsertItemSet(plan.itemSet);
+          if (r.ok) { log(`[import] item set ${plan.itemSet.title} (${plan.itemSet.blocks.length} blocks)`); status({ lastChampion: name, lastItemSetAt: now(), ...(allOk ? { lastError: null } : {}) }); }
+          else { log(`[import] item set failed: ${r.error}`); status({ lastError: `item set: ${r.error}` }); }
+        }
       }
-      if (allOk) lastFingerprint = fp; // a failure keeps it unset so the next tick retries
     } catch (e) {
       // Nothing here is expected to throw (the writer contracts resolve, getChamp is handled
       // above), so this covers the unforeseen - malformed cached data reaching pickBuild, say.
@@ -73,7 +87,7 @@ export function createImporter({ state, repository, writer, setTimer = setTimeou
     tick,
     start() { if (!stopped) return; stopped = false; status(); schedule(); },
     stop() { stopped = true; if (timer) clearTimer(timer); timer = null; status(); },
-    setEnabled(v) { enabled = !!v; if (!enabled) lastFingerprint = null; status(); },
+    setEnabled(v) { enabled = !!v; if (!enabled) forget(); status(); },
     isEnabled: () => enabled,
     getStatus: () => ({ enabled, running: !stopped && enabled, ...last }),
   };

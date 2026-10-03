@@ -85,12 +85,24 @@ test('idle outside the Mayhem queues: no writes and no champion fetch', async ()
   assert.equal(mayhemClassic.writes.length, 2, 'Mayhem Classic imports like ARAM Mayhem');
 });
 
-test('a failed write reports the error and retries on the next tick; success clears it', async () => {
+test('a failed write reports the error and is retried only once the plan changes', async () => {
   const { imp, writes, st } = setup({ spellsOk: false });
   await imp.tick();
   assert.equal(st.statuses.at(-1).lastError, 'spells: HTTP 400');
+  assert.deepEqual(writes.map((w) => w[0]), ['spells', 'set'], 'a failed spells write still lets the item set through');
   await imp.tick();
-  assert.equal(writes.filter((w) => w[0] === 'spells').length, 2, 'retried because the fingerprint was not remembered');
+  assert.equal(writes.length, 2, 'no retry and no re-PUT while nothing has changed');
+  st.game = { ...st.game, lineup: { ...st.game.lineup, held: 99 } };
+  await imp.tick();
+  assert.deepEqual(writes.slice(2).map((w) => w[0]), ['spells', 'set'], 'a changed champion writes again');
+});
+
+test('each write has its own fingerprint: a failed spells write does not re-PUT the item set', async () => {
+  const { imp, writes } = setup({ spellsOk: false, setOk: true });
+  await imp.tick();
+  assert.equal(writes.length, 2);
+  await imp.tick();
+  assert.equal(writes.length, 2, 'the second tick writes nothing at all');
 });
 
 test('champion data failure is reported, never thrown', async () => {
