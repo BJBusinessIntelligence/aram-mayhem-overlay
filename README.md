@@ -144,6 +144,20 @@ Tuning: run one game with `node src/main.js --rec-debug` (or `REC_DEBUG=true`); 
 saved as `data/debug/recommend-<ts>.json` (newest 50) with the lineup, profiles and scores. Capture
 a real champ-select session for fixtures with `node scripts/lcu-dump.js` during champ select.
 
+## Auto-import of summoner spells and item set
+
+Whenever the champion you hold changes in champ select (opening-pick hover, lock, bench swap) the
+overlay writes to the League client: your summoner spells become the champion's best pair, and an
+item set named `AMO · <champion>` (Start, Boots, Core in order, Later; plus Situational once the
+game starts and enemies are known) appears in the shop. One set per champion; only `AMO ·` sets are
+ever replaced, your own item sets are never touched. These are the only two things the overlay
+writes to the client.
+
+Header chip: **Import on · Yasuo · Flash + Mark** (click to toggle), **Import off**, or the last error.
+Start flags: `--import=false` / `IMPORT_ENABLED=false` to disable; `--import-debug` / `IMPORT_DEBUG=true`
+saves the raw item-set GET/PUT bodies to `data/debug/item-sets-<ts>.json` for troubleshooting.
+Runtime toggle: `POST /api/import {"enabled":false}`.
+
 ## Manual smoke checklist
 
 1. `node src/main.js` with League closed: page says "Waiting for League…", search works.
@@ -159,6 +173,9 @@ a real champ-select session for fixtures with `node scripts/lcu-dump.js` during 
 10. In game: build shows "Full matchup" and a Situational row with reasons; augment list unchanged.
 11. Lineup… form: unknown names produce a banner error; a valid lineup renders a "Lineup preview"
     panel and preview build; Live/new game clears it.
+- Auto-import: hover a champion in the opening pick → spells flip in the client within ~2 s; lock →
+  console shows `[import] item set AMO · <name>`; in game the shop's item-set tab lists the set with
+  a Situational block; chip click turns it off and no further writes happen.
 
 ## Layout
 
