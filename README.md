@@ -179,10 +179,12 @@ Runtime toggle: `POST /api/import {"enabled":false}`.
 
 ## Layout
 
-    src/config.js       env/argv
-    src/data/           cache, repository, champion index, aramkit + blitz adapters, cdragon resources
-    src/rank/           augment ranking, build selection, trait profiles, lineup scoring and weights (pure)
-    src/game/           lockfile, lcu, liveclient, detector
-    src/server/         state store, http routes
-    public/             page
-    test/               node:test suites + fixtures (aramkit/blitz/cdragon fixtures are real captures)
+    src/config.js          env/argv
+    src/data/              cache, repository, champion index, aramkit + blitz adapters, cdragon resources
+    src/rank/              augment ranking, build selection, trait profiles, lineup scoring and weights (pure)
+    src/game/              lockfile, lcu, liveclient, detector
+    src/game/lcuWriter.js  the only module that writes to the League client
+    src/import/            item set + spell planner and the loop that pushes them into the client
+    src/server/            state store, http routes
+    public/                page
+    test/                  node:test suites + fixtures (aramkit/blitz/cdragon fixtures are real captures)

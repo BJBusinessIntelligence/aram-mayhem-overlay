@@ -16,6 +16,7 @@ import { createAppState } from './server/state.js';
 import { createRecommender } from './server/recommend.js';
 import { createServer } from './server/http.js';
 import { httpsGetJson, httpsSendJson } from './util/httpsJson.js';
+import { pruneDumps } from './util/dumps.js';
 import { readLockfile } from './game/lockfile.js';
 import { createLcuClient } from './game/lcu.js';
 import { createLiveClient } from './game/liveclient.js';
@@ -102,6 +103,7 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
     debugDump: cfg.importDebug ? async (d) => {
       const dir = path.join('data', 'debug'); await fs.mkdir(dir, { recursive: true });
       await fs.writeFile(path.join(dir, `item-sets-${Date.now()}.json`), JSON.stringify(d, null, 2));
+      await pruneDumps(fs, path, dir, 'item-sets-', 50);
     } : null,
   });
   const importer = createImporter({ state, repository, writer, log });
