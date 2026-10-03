@@ -9,6 +9,7 @@ let lastRendered = '';
 let lastRenderKey = '';
 let lastLiveChampionId = null;
 let dismissedOfferAt = null;
+let lastImport = null;
 const TRAIT_NAMES = { frontline: 'Frontline', engage: 'Engage', peel: 'Peel', sustain: 'Sustain', cc: 'CC', poke: 'Poke' };
 const COVERAGE_OK = 0.6;
 
@@ -114,6 +115,7 @@ function renderOcrChip(o) {
 }
 
 function renderImportChip(i) {
+  lastImport = i;
   const el = $('#import-chip');
   if (!i) { el.hidden = true; return; }
   el.hidden = false;
@@ -234,7 +236,7 @@ $('#refresh-btn').addEventListener('click', async () => {
 });
 $('#live-btn').addEventListener('click', () => { preview = null; lastRendered = ''; lastRenderKey = ''; tick(); });
 $('#import-chip').addEventListener('click', async () => {
-  const cur = JSON.parse(lastRendered || '{}').import;
+  const cur = lastImport;
   try { await api('/api/import', { method: 'POST', body: JSON.stringify({ enabled: !(cur && cur.enabled) }) }); lastRendered = ''; lastRenderKey = ''; tick(); }
   catch (e) { setBanner(e.message); }
 });
