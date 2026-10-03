@@ -2,6 +2,9 @@ export const RARITIES = Object.freeze(['prismatic', 'gold', 'silver']);
 export const STAGES = Object.freeze([1, 2, 3, 4]);
 export const TIER_ORDER = Object.freeze({ S: 0, A: 1, B: 2, C: 3, D: 4 });
 
+// The queues this overlay is for: ARAM Mayhem and Mayhem Classic.
+export const MAYHEM_QUEUES = Object.freeze([2400, 2450]);
+
 export const EMPTY_LINEUP = Object.freeze({ held: null, bench: [], allies: [], enemies: [] });
 
 export const EMPTY_GAME = Object.freeze({

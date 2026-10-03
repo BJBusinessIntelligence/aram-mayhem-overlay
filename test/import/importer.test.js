@@ -14,15 +14,17 @@ function withBadBuild(data) {
   return { ...data, build: { ...data.build, archetypes: [broken] } };
 }
 
-function setup({ phase = 'champselect', held = 157, enemies = [], enabled = true, spellsOk = true, setOk = true, failChamp = false, badBuild = false } = {}) {
-  const st = { game: { phase, championId: null, lineup: { held, bench: [], allies: [], enemies } }, view: { stage: 'auto', bracket: 'all' }, context: null, statuses: [] };
+function setup({ phase = 'champselect', queueId = 2400, held = 157, enemies = [], enabled = true, spellsOk = true, setOk = true, failChamp = false, badBuild = false } = {}) {
+  const st = { game: { phase, queueId, championId: null, lineup: { held, bench: [], allies: [], enemies } }, view: { stage: 'auto', bracket: 'all' }, context: null, statuses: [] };
   const state = { getGame: () => st.game, getView: () => st.view, getBuildContext: () => st.context, setImportStatus: (p) => st.statuses.push(p) };
   const writes = [];
   const writer = {
     setSpells: async (ids) => { writes.push(['spells', ids]); return spellsOk ? { ok: true, status: 204 } : { ok: false, status: 400, error: 'HTTP 400' }; },
     upsertItemSet: async (s) => { writes.push(['set', s.title, s.blocks.map((b) => b.type)]); return setOk ? { ok: true, status: 201 } : { ok: false, status: 500, error: 'HTTP 500' }; },
   };
-  const repository = { getChamp: async (id) => {
+  const champCalls = [];
+  const repository = { getChamp: async (id, bracket) => {
+    champCalls.push([id, bracket]);
     if (failChamp) throw new Error('all sources down');
     const data = champ(id, id === 157 ? 'Yasuo' : `#${id}`);
     return { data: badBuild ? withBadBuild(data) : data, stale: false, source: 'aramkit' };
@@ -31,7 +33,7 @@ function setup({ phase = 'champselect', held = 157, enemies = [], enabled = true
   const logs = [];
   const imp = createImporter({ state, repository, writer, setTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimer: () => {}, now: () => 1234, log: (m) => logs.push(m) });
   imp.setEnabled(enabled);
-  return { imp, st, writes, timers, logs };
+  return { imp, st, writes, timers, logs, champCalls };
 }
 
 test('champ select: first tick writes spells then the item set; unchanged snapshot writes nothing more', async () => {
@@ -67,6 +69,20 @@ test('idle when disabled, out of phase, or without a held champion', async () =>
   const none = setup({ phase: 'none' }); await none.imp.tick(); assert.equal(none.writes.length, 0);
   const loading = setup({ phase: 'loading' }); await loading.imp.tick(); assert.equal(loading.writes.length, 0);
   const noHeld = setup({ held: null }); await noHeld.imp.tick(); assert.equal(noHeld.writes.length, 0);
+});
+
+test('idle outside the Mayhem queues: no writes and no champion fetch', async () => {
+  const other = setup({ queueId: 420 });
+  await other.imp.tick();
+  assert.equal(other.writes.length, 0);
+  assert.equal(other.champCalls.length, 0, 'the queue is checked before any fetch');
+  const unknown = setup({ queueId: null });
+  await unknown.imp.tick();
+  assert.equal(unknown.writes.length, 0);
+  assert.equal(unknown.champCalls.length, 0);
+  const mayhemClassic = setup({ queueId: 2450 });
+  await mayhemClassic.imp.tick();
+  assert.equal(mayhemClassic.writes.length, 2, 'Mayhem Classic imports like ARAM Mayhem');
 });
 
 test('a failed write reports the error and retries on the next tick; success clears it', async () => {

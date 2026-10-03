@@ -1,3 +1,4 @@
+import { MAYHEM_QUEUES } from '../data/model.js';
 import { pickBuild } from '../rank/builds.js';
 import { planImport, fingerprint } from './plan.js';
 
@@ -23,6 +24,8 @@ export function createImporter({ state, repository, writer, setTimer = setTimeou
     const g = state.getGame();
     const held = g?.lineup?.held ?? null;
     if (!ACTIVE.has(g?.phase) || !held) return;
+    // Builds and spells here are Mayhem-only advice, so a normal ARAM or draft game is left alone.
+    if (!MAYHEM_QUEUES.includes(g.queueId)) return;
     busy = true;
     try {
       let data;

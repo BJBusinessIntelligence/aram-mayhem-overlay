@@ -1,4 +1,6 @@
 const POLL_MS = 2000;
+// The ids mirror MAYHEM_QUEUES in src/data/model.js; this page is a plain script and cannot import it.
+const MAYHEM_QUEUES = { 2400: 'ARAM Mayhem', 2450: 'Mayhem Classic' };
 const noIcons = new URLSearchParams(location.search).has('noicons');
 const $ = (s) => document.querySelector(s);
 
@@ -66,7 +68,7 @@ function render(p, state) {
     ? `${esc(c.name)} <span class="tier ${esc(c.tier ?? '')}">${esc(c.tier ?? '?')}</span> <span class="muted">${pct(c.winRate)} WR · ${kfmt(c.games)} games</span>`
     : (g.lcuConnected || g.liveConnected ? 'Waiting for champion…' : 'Waiting for League…');
   const phase = { none: 'Not in game', champselect: 'Champ select', loading: 'Loading screen', ingame: 'In game' }[g.phase] ?? g.phase;
-  const queue = g.queueId === 2400 ? 'ARAM Mayhem' : g.queueId === 2450 ? 'Mayhem Classic' : g.queueId ? `queue ${g.queueId}` : '';
+  const queue = MAYHEM_QUEUES[g.queueId] ?? (g.queueId ? `queue ${g.queueId}` : '');
   $('#game-info').textContent = [preview ? 'Preview' : phase, queue, g.gameMode, g.level ? `lvl ${g.level}` : ''].filter(Boolean).join(' · ');
 
   const view = p.view;
