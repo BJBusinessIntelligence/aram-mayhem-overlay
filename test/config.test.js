@@ -70,3 +70,12 @@ test('rec-debug flag and env', () => {
   assert.equal(loadConfig({ env: { REC_DEBUG: 'true' } }).recDebug, true);
   assert.equal(loadConfig({ env: { REC_DEBUG: 'false' } }).recDebug, false);
 });
+
+test('import flags', () => {
+  assert.equal(loadConfig({}).importEnabled, true);
+  assert.equal(loadConfig({ argv: ['--import=false'] }).importEnabled, false);
+  assert.equal(loadConfig({ env: { IMPORT_ENABLED: 'off' } }).importEnabled, false);
+  assert.equal(loadConfig({}).importDebug, false);
+  assert.equal(loadConfig({ argv: ['--import-debug'] }).importDebug, true);
+  assert.equal(loadConfig({ env: { IMPORT_DEBUG: '1' } }).importDebug, true);
+});

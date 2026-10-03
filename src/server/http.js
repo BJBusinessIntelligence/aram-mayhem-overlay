@@ -53,7 +53,7 @@ export function resolveChampionIds(list, champIndex) {
   return { ids, unknown };
 }
 
-export function createServer({ state, champIndex, publicDir, watcher = null }) {
+export function createServer({ state, champIndex, publicDir, watcher = null, importer = null }) {
   return http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -108,6 +108,13 @@ export function createServer({ state, champIndex, publicDir, watcher = null }) {
         const body = JSON.parse((await readBody(req)) || '{}');
         if (typeof body.enabled !== 'boolean') return send(res, 400, { error: 'enabled must be boolean' });
         watcher.setEnabled(body.enabled);
+        return send(res, 200, state.snapshot());
+      }
+      if (req.method === 'POST' && p === '/api/import') {
+        if (!importer) return send(res, 503, { error: 'importer not configured' });
+        const body = JSON.parse((await readBody(req)) || '{}');
+        if (typeof body.enabled !== 'boolean') return send(res, 400, { error: 'enabled must be boolean' });
+        importer.setEnabled(body.enabled);
         return send(res, 200, state.snapshot());
       }
       if (req.method === 'POST' && p === '/api/recommend/preview') {

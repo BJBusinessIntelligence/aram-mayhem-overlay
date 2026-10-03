@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAppState, buildPayload } from '../../src/server/state.js';
+import { createAppState, buildPayload, EMPTY_IMPORT } from '../../src/server/state.js';
 import { EMPTY_GAME } from '../../src/data/model.js';
 import { normalizeAramkit } from '../../src/data/aramkit/normalize.js';
 import { fixture, aramkitResources } from '../helpers/fixtures.js';
@@ -264,4 +264,18 @@ test('recommend: clearing on phase none invalidates an in-flight compute', async
   await pending;
   assert.equal(s.snapshot().recommend, null);
   assert.equal(s.snapshot().build, null);
+});
+
+test('payload carries import status with safe defaults; setImportStatus merges; getBuildContext exposes the stored context', async () => {
+  const s = createAppState({ repository: fakeRepo() });
+  assert.deepEqual(s.snapshot().import, EMPTY_IMPORT);
+  s.setImportStatus({ enabled: true, lastChampion: 'Yasuo' });
+  assert.equal(s.snapshot().import.enabled, true);
+  assert.equal(s.snapshot().import.lastChampion, 'Yasuo');
+  assert.equal(s.snapshot().import.lastError, null);
+  assert.equal(s.getBuildContext(), null);
+  const rec = fakeRecommender();
+  const s2 = createAppState({ repository: fakeRepo(), recommender: rec });
+  await s2.setGame(game({ phase: 'champselect', championId: 157, lineup: lineup(), lineupRev: 1 }));
+  assert.equal(s2.getBuildContext().allies.length, 4);
 });

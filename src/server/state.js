@@ -3,8 +3,9 @@ import { shapeAugments } from '../rank/augments.js';
 import { pickBuild } from '../rank/builds.js';
 
 export const EMPTY_OCR = Object.freeze({ enabled: false, running: false, lastCaptureMs: null, lastCaptureAt: null, lastError: null });
+export const EMPTY_IMPORT = Object.freeze({ enabled: false, running: false, lastChampion: null, lastSpells: null, lastItemSetAt: null, lastError: null });
 
-export function buildPayload({ game, loading, champData, view, source, stale, errors, offer = null, ocr = EMPTY_OCR, recommend = null, buildContext = null }) {
+export function buildPayload({ game, loading, champData, view, source, stale, errors, offer = null, ocr = EMPTY_OCR, import: importStatus = EMPTY_IMPORT, recommend = null, buildContext = null }) {
   const augments = champData ? shapeAugments(champData, { stage: view.stage, level: game.level }) : null;
   return {
     game,
@@ -19,6 +20,7 @@ export function buildPayload({ game, loading, champData, view, source, stale, er
     errors,
     offer,
     ocr,
+    import: importStatus,
     recommend,
   };
 }
@@ -32,6 +34,7 @@ export function createAppState({ repository, recommender = null, now = Date.now,
   const errors = [];
   let offer = null;
   let ocr = { ...EMPTY_OCR };
+  let importStatus = { ...EMPTY_IMPORT };
   let recommend = null;      // { rev, context, team, candidates, warnings }
   let buildContext = null;   // { allies, enemies, itemCategories }
   let pendingRecommend = Promise.resolve();
@@ -124,6 +127,7 @@ export function createAppState({ repository, recommender = null, now = Date.now,
         errors: errors.slice(),
         offer,
         ocr: { ...ocr },
+        import: { ...importStatus },
         recommend,
         buildContext,
       });
@@ -146,5 +150,7 @@ export function createAppState({ repository, recommender = null, now = Date.now,
     getOffer: () => offer,
     setOffer(next) { offer = next ?? null; },
     setOcrStatus(patch = {}) { ocr = { ...ocr, ...patch }; },
+    setImportStatus(patch = {}) { importStatus = { ...importStatus, ...patch }; },
+    getBuildContext: () => buildContext,
   };
 }

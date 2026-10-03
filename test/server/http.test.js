@@ -81,7 +81,9 @@ const fakeWatcher = {
   captureOnce: async (o) => { watcherCalls.push(['capture', o]); return { capture: { ok: captureOk, error: captureOk ? undefined : 'boom', lines: [] }, match: null, advice: null, savedTo: o.save ? 'data/debug/x.png' : null }; },
   setEnabled: (v) => { watcherCalls.push(['enabled', v]); },
 };
-const server2 = createServer({ state, champIndex, publicDir, watcher: fakeWatcher });
+const importerCalls = [];
+const importer = { setEnabled: (v) => importerCalls.push(v), isEnabled: () => true, getStatus: () => ({}) };
+const server2 = createServer({ state, champIndex, publicDir, watcher: fakeWatcher, importer });
 await new Promise((r) => server2.listen(0, '127.0.0.1', r));
 const base2 = `http://127.0.0.1:${server2.address().port}`;
 after(() => server2.close());
@@ -156,6 +158,14 @@ test('POST /api/ocr toggles the watcher and validates the body', async () => {
   assert.equal(r.status, 200);
   assert.deepEqual(watcherCalls.at(-1), ['enabled', false]);
   assert.equal((await post2('/api/ocr', { enabled: 'yes' })).status, 400);
+});
+
+test('POST /api/import toggles the importer; validates; 503 without one', async () => {
+  const r = await post2('/api/import', { enabled: false });
+  assert.equal(r.status, 200);
+  assert.deepEqual(importerCalls, [false]);
+  assert.equal((await post2('/api/import', { enabled: 'yes' })).status, 400);
+  assert.equal((await post('/api/import', { enabled: true })).status, 503);
 });
 
 test('parseView', () => {

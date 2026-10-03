@@ -15,13 +15,15 @@ import { createCdragonChampions } from './data/cdragon/champion.js';
 import { createAppState } from './server/state.js';
 import { createRecommender } from './server/recommend.js';
 import { createServer } from './server/http.js';
-import { httpsGetJson } from './util/httpsJson.js';
+import { httpsGetJson, httpsSendJson } from './util/httpsJson.js';
 import { readLockfile } from './game/lockfile.js';
 import { createLcuClient } from './game/lcu.js';
 import { createLiveClient } from './game/liveclient.js';
 import { createDetector } from './game/detector.js';
 import { createOcrWorker } from './ocr/worker.js';
 import { createOfferWatcher } from './ocr/watcher.js';
+import { createLcuWriter } from './game/lcuWriter.js';
+import { createImporter } from './import/importer.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -95,12 +97,24 @@ export async function main({ env = process.env, argv = process.argv.slice(2) } =
   watcher.start();
   log(`ocr: enabled=${cfg.ocrEnabled} available=${ocrWorker.isAvailable()} region=${cfg.ocrRegion}`);
 
-  const server = createServer({ state, champIndex, publicDir: path.join(here, '..', 'public'), watcher });
+  const writer = createLcuWriter({
+    readLockfile: () => readLockfile(cfg.lockfilePath, { fs }), getJson: httpsGetJson, sendJson: httpsSendJson, log,
+    debugDump: cfg.importDebug ? async (d) => {
+      const dir = path.join('data', 'debug'); await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, `item-sets-${Date.now()}.json`), JSON.stringify(d, null, 2));
+    } : null,
+  });
+  const importer = createImporter({ state, repository, writer, log });
+  importer.setEnabled(cfg.importEnabled);
+  importer.start();
+  log(`import: enabled=${cfg.importEnabled} debug=${cfg.importDebug}`);
+
+  const server = createServer({ state, champIndex, publicDir: path.join(here, '..', 'public'), watcher, importer });
   await new Promise((resolve) => server.listen(cfg.port, '127.0.0.1', resolve));
   const url = `http://localhost:${cfg.port}`;
   log(`overlay: ${url}`);
   if (cfg.open) spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
-  return { server, detector, stop: () => { watcher.stop(); ocrWorker.stop(); detector.stop(); server.close(); } };
+  return { server, detector, stop: () => { importer.stop(); watcher.stop(); ocrWorker.stop(); detector.stop(); server.close(); } };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

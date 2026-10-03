@@ -13,6 +13,8 @@ export const DEFAULTS = Object.freeze({
   ocrRegion: 'band',
   ocrDebug: false,
   recDebug: false,
+  importEnabled: true,
+  importDebug: false,
 });
 
 // --key=value | --key value | --key   (bare flag → 'true')
@@ -76,6 +78,11 @@ export function loadConfig({ env = {}, argv = [], platform = process.platform } 
 
   const rec = pick('rec-debug', 'REC_DEBUG');
   if (rec !== undefined) c.recDebug = bool(rec);
+
+  const imp = pick('import', 'IMPORT_ENABLED');
+  if (imp !== undefined) c.importEnabled = bool(imp);
+  const impDebug = pick('import-debug', 'IMPORT_DEBUG');
+  if (impDebug !== undefined) c.importDebug = bool(impDebug);
 
   return c;
 }
