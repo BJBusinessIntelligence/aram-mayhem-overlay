@@ -85,6 +85,18 @@ test('idle outside the Mayhem queues: no writes and no champion fetch', async ()
   assert.equal(mayhemClassic.writes.length, 2, 'Mayhem Classic imports like ARAM Mayhem');
 });
 
+test('leaving champ select clears what was written, so a dodge and re-queue imports again', async () => {
+  const { imp, writes, st } = setup();
+  await imp.tick();
+  assert.equal(writes.length, 2);
+  st.game = { ...st.game, phase: 'none', queueId: null, lineup: { held: null, bench: [], allies: [], enemies: [] } };
+  await imp.tick();
+  assert.equal(writes.length, 2, 'nothing is written out of phase');
+  st.game = { ...st.game, phase: 'champselect', queueId: 2400, lineup: { held: 157, bench: [], allies: [], enemies: [] } };
+  await imp.tick();
+  assert.deepEqual(writes.slice(2).map((w) => w[0]), ['spells', 'set'], 'the same champion is re-imported');
+});
+
 test('a failed write reports the error and is retried only once the plan changes', async () => {
   const { imp, writes, st } = setup({ spellsOk: false });
   await imp.tick();

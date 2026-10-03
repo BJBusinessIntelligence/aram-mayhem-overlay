@@ -29,7 +29,10 @@ export function createImporter({ state, repository, writer, setTimer = setTimeou
     if (busy || !enabled) return;
     const g = state.getGame();
     const held = g?.lineup?.held ?? null;
-    if (!ACTIVE.has(g?.phase) || !held) return;
+    // Out of champ select and out of game the client keeps nothing of what was pushed, and a dodge
+    // or a new queue has to import from scratch even if the same champion comes back.
+    if (!ACTIVE.has(g?.phase)) { forget(); return; }
+    if (!held) return;
     // Builds and spells here are Mayhem-only advice, so a normal ARAM or draft game is left alone.
     if (!MAYHEM_QUEUES.includes(g.queueId)) return;
     // Everything downstream is a pure function of these inputs, so an unchanged tick can stop here
