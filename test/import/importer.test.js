@@ -7,7 +7,14 @@ import { fixture, aramkitResources } from '../helpers/fixtures.js';
 const yasuo = normalizeAramkit(fixture('aramkit', 'champion-details-157-all.json'), aramkitResources(), { version: '16.19', bracket: 'all', fetchedAt: 0 });
 const champ = (id, name) => ({ ...yasuo, champion: { ...yasuo.champion, id, name } });
 
-function setup({ phase = 'champselect', held = 157, enemies = [], enabled = true, spellsOk = true, setOk = true, failChamp = false } = {}) {
+// Malformed cached champion data: an archetype without `starters`, which pickBuild dereferences.
+function withBadBuild(data) {
+  const broken = { ...data.build.archetypes[0] };
+  delete broken.starters;
+  return { ...data, build: { ...data.build, archetypes: [broken] } };
+}
+
+function setup({ phase = 'champselect', held = 157, enemies = [], enabled = true, spellsOk = true, setOk = true, failChamp = false, badBuild = false } = {}) {
   const st = { game: { phase, championId: null, lineup: { held, bench: [], allies: [], enemies } }, view: { stage: 'auto', bracket: 'all' }, context: null, statuses: [] };
   const state = { getGame: () => st.game, getView: () => st.view, getBuildContext: () => st.context, setImportStatus: (p) => st.statuses.push(p) };
   const writes = [];
@@ -15,7 +22,11 @@ function setup({ phase = 'champselect', held = 157, enemies = [], enabled = true
     setSpells: async (ids) => { writes.push(['spells', ids]); return spellsOk ? { ok: true, status: 204 } : { ok: false, status: 400, error: 'HTTP 400' }; },
     upsertItemSet: async (s) => { writes.push(['set', s.title, s.blocks.map((b) => b.type)]); return setOk ? { ok: true, status: 201 } : { ok: false, status: 500, error: 'HTTP 500' }; },
   };
-  const repository = { getChamp: async (id) => { if (failChamp) throw new Error('all sources down'); return { data: champ(id, id === 157 ? 'Yasuo' : `#${id}`), stale: false, source: 'aramkit' }; } };
+  const repository = { getChamp: async (id) => {
+    if (failChamp) throw new Error('all sources down');
+    const data = champ(id, id === 157 ? 'Yasuo' : `#${id}`);
+    return { data: badBuild ? withBadBuild(data) : data, stale: false, source: 'aramkit' };
+  } };
   const timers = [];
   const logs = [];
   const imp = createImporter({ state, repository, writer, setTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimer: () => {}, now: () => 1234, log: (m) => logs.push(m) });
@@ -71,6 +82,16 @@ test('champion data failure is reported, never thrown', async () => {
   await imp.tick();
   assert.equal(writes.length, 0);
   assert.match(st.statuses.at(-1).lastError, /all sources down/);
+});
+
+test('an unexpected failure while planning reaches the status instead of rejecting the tick', async () => {
+  const { imp, st, writes, logs } = setup({ badBuild: true });
+  await imp.tick();
+  assert.equal(writes.length, 0);
+  assert.match(st.statuses.at(-1).lastError, /^tick: /);
+  assert.ok(logs.some((m) => /^\[import\] tick failed: /.test(m)));
+  await imp.tick();
+  assert.equal(writes.length, 0, 'still not wedged by the busy flag');
 });
 
 test('disable then re-enable re-imports the same lineup; start/stop manage the timer and running flag', async () => {
