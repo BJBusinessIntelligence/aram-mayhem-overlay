@@ -105,11 +105,28 @@ test('each write has its own fingerprint: a failed spells write does not re-PUT 
   assert.equal(writes.length, 2, 'the second tick writes nothing at all');
 });
 
-test('champion data failure is reported, never thrown', async () => {
-  const { imp, st, writes } = setup({ failChamp: true });
+test('an unchanged snapshot does not even fetch the champion; any input change does', async () => {
+  const { imp, st, champCalls } = setup();
+  await imp.tick();
+  await imp.tick();
+  assert.equal(champCalls.length, 1, 'the second tick stops before the repository');
+  st.game = { ...st.game, lineup: { ...st.game.lineup, held: 99 } };
+  await imp.tick();
+  assert.equal(champCalls.length, 2, 'a changed held champion fetches again');
+  st.context = { allies: [], enemies: [], itemCategories: {} };
+  await imp.tick();
+  assert.equal(champCalls.length, 3, 'a rebuilt build context fetches again');
+  await imp.tick();
+  assert.equal(champCalls.length, 3, 'the same context object does not');
+});
+
+test('champion data failure is reported, never thrown, and not re-fetched until something changes', async () => {
+  const { imp, st, writes, champCalls } = setup({ failChamp: true });
   await imp.tick();
   assert.equal(writes.length, 0);
   assert.match(st.statuses.at(-1).lastError, /all sources down/);
+  await imp.tick();
+  assert.equal(champCalls.length, 1, 'a champion without data is not re-fetched every second');
 });
 
 test('an unexpected failure while planning reaches the status instead of rejecting the tick', async () => {

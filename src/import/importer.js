@@ -13,10 +13,12 @@ export function createImporter({ state, repository, writer, setTimer = setTimeou
   let busy = false;
   let spellsFp = null;
   let itemSetFp = null;
+  let lastKey = null;         // the scalar inputs of the last tick that got as far as the repository
+  let lastContext = null;     // the build context of that tick, compared by identity
   let last = { lastChampion: null, lastSpells: null, lastItemSetAt: null, lastError: null };
 
   // Forget what has been written so the next tick re-imports from scratch.
-  function forget() { spellsFp = null; itemSetFp = null; }
+  function forget() { spellsFp = null; itemSetFp = null; lastKey = null; lastContext = null; }
 
   function status(patch = {}) {
     last = { ...last, ...patch };
@@ -30,8 +32,17 @@ export function createImporter({ state, repository, writer, setTimer = setTimeou
     if (!ACTIVE.has(g?.phase) || !held) return;
     // Builds and spells here are Mayhem-only advice, so a normal ARAM or draft game is left alone.
     if (!MAYHEM_QUEUES.includes(g.queueId)) return;
+    // Everything downstream is a pure function of these inputs, so an unchanged tick can stop here
+    // and spare the repository (and its cache bookkeeping) a lookup every second. The build context
+    // is rebuilt whenever the lineup or the item catalogue changes, so identity is the right test.
+    const context = state.getBuildContext();
+    const key = JSON.stringify([g.phase, g.queueId, held, g.lineupRev, state.getView().bracket, (g.lineup.enemies ?? []).length]);
+    if (key === lastKey && context === lastContext) return;
     busy = true;
     try {
+      // Remembered before the fetch, so a champion whose data is unavailable is not retried every
+      // second either; the error stays on the status chip until an input changes.
+      lastKey = key; lastContext = context;
       let data;
       try { data = (await repository.getChamp(held, state.getView().bracket)).data; }
       catch (e) { status({ lastError: e.message }); return; }
