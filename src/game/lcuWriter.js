@@ -11,6 +11,7 @@ const ok2xx = (status) => status >= 200 && status < 300;
 
 export function createLcuWriter({ readLockfile, getJson, sendJson, now = Date.now, log = () => {}, debugDump = null }) {
   let summonerMemo = null; // { port, summonerId, accountId }
+  let summonerKey = null;  // `${port}|${password}` the memo was read with; the password never enters the memo
 
   async function session() {
     let lock = null;
@@ -22,15 +23,19 @@ export function createLcuWriter({ readLockfile, getJson, sendJson, now = Date.no
       get: (p) => getJson(`${base}${p}`, { headers, timeoutMs: 3000, rejectUnauthorized: false }),
       send: (method, p, body) => sendJson(`${base}${p}`, { method, body, headers, timeoutMs: 3000, rejectUnauthorized: false }),
       port: lock.port,
+      key: `${lock.port}|${lock.password}`,
     };
   }
 
   const fail = (status, error) => ({ ok: false, status, error });
 
   async function summoner(s) {
-    if (summonerMemo && summonerMemo.port === s.port) return summonerMemo;
+    // A restarted client can reuse the port with a new password, and that is a different account
+    // session, so the memo is only good while both halves of the lockfile match.
+    if (summonerMemo && summonerKey === s.key) return summonerMemo;
     const r = await s.get('/lol-summoner/v1/current-summoner');
     if (r.status !== 200 || !r.body || !Number.isInteger(r.body.summonerId)) throw new Error(`summoner lookup failed: HTTP ${r.status}`);
+    summonerKey = s.key;
     summonerMemo = { port: s.port, summonerId: r.body.summonerId, accountId: r.body.accountId ?? null };
     return summonerMemo;
   }

@@ -67,6 +67,19 @@ test('upsertItemSet: GET, merge, PUT the GET body with new itemSets and timestam
   assert.equal(h.calls.filter((c) => c[1] === '/lol-summoner/v1/current-summoner').length, 1, 'summoner looked up once per lockfile');
 });
 
+test('the summoner memo is keyed on the password too: a restarted client on the same port is looked up again', async () => {
+  const h = fakeHttp();
+  let password = 'secret';
+  const w = createLcuWriter({ readLockfile: async () => ({ port: 55555, password }), getJson: h.getJson, sendJson: h.sendJson });
+  const fresh = amo(157, 'Yasuo');
+  await w.upsertItemSet(fresh);
+  password = 'different';
+  await w.upsertItemSet(fresh);
+  const lookups = h.calls.filter((c) => c[1] === '/lol-summoner/v1/current-summoner');
+  assert.equal(lookups.length, 2, 'a new password means a new client session, so the memo is stale');
+  assert.equal(lookups[1][2].headers.authorization, 'Basic ' + Buffer.from('riot:different').toString('base64'));
+});
+
 test('failures: no lockfile, GET failure (no PUT), non-2xx PATCH/PUT → ok:false with status', async () => {
   const none = createLcuWriter({ readLockfile: async () => null, getJson: fakeHttp().getJson, sendJson: fakeHttp().sendJson });
   assert.equal((await none.setSpells([4, 32])).ok, false);
