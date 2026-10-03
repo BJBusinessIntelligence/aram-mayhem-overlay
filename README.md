@@ -115,8 +115,10 @@ and [DuplicateOutput1 format contract](https://learn.microsoft.com/en-us/windows
 
 ## Champ-select recommender and adaptive builds
 
-During ARAM Mayhem champ select the page shows a **Champ select** panel ranking your held
-champion and every bench champion for *this* team: 60 % individual Mayhem strength (win rate
+During ARAM Mayhem champ select the page shows a panel ranking champions for *this* team. In the
+opening pick (**Pick phase**, 15 s) the candidates are the champions the client offers you; your
+hover and your allies' hovers or locks count as the lineup. After locking (**Champ select**) it ranks
+your held champion and every bench champion: 60 % individual Mayhem strength (win rate
 shrunk by sample size, percentile among all champions), 30 % composition fit (what the pick adds
 in frontline, engage, peel, sustain, crowd control, poke and physical/magic balance), 10 % synergy
 (rule-based plus a small curated pair list — no source publishes champion-pair statistics).

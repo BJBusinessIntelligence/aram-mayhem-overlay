@@ -113,3 +113,23 @@ test('no game → EMPTY_LINEUP; sameState sees lineup changes', () => {
   assert.equal(s.lineupRev, 4);
   assert.equal(sameState({ ...EMPTY_GAME, lineupRev: 1 }, { ...EMPTY_GAME, lineupRev: 2 }), false);
 });
+
+test('opening pick: champ select starts before any lock; held is the hover, bench is the subset', () => {
+  const lcu = { connected: true, phase: 'ChampSelect', queueId: 2400, championId: null, champSelect: { held: null, bench: [77, 86, 35, 62], allies: [], picking: true } };
+  const a = reduce(EMPTY_GAME, { lcu, live: OFF });
+  assert.equal(a.phase, 'champselect');
+  assert.equal(a.championId, null);
+  assert.deepEqual(a.lineup, { held: null, bench: [77, 86, 35, 62], allies: [], enemies: [] });
+  assert.equal(a.lineupRev, 1);
+  const hover = reduce(a, { lcu: { ...lcu, champSelect: { held: 77, bench: [86, 35, 62], allies: [35, 86], picking: true } }, live: OFF });
+  assert.equal(hover.phase, 'champselect');
+  assert.equal(hover.championId, null, 'a hover is not a lock');
+  assert.equal(hover.riotId, null);
+  assert.deepEqual(hover.lineup, { held: 77, bench: [86, 35, 62], allies: [35, 86], enemies: [] });
+  assert.equal(hover.lineupRev, 2);
+});
+
+test('champ select with no subset, no hover and no lock stays none', () => {
+  const lcu = { connected: true, phase: 'ChampSelect', queueId: 2400, championId: null, champSelect: { held: null, bench: [], allies: [], picking: true } };
+  assert.equal(reduce(EMPTY_GAME, { lcu, live: OFF }).phase, 'none');
+});

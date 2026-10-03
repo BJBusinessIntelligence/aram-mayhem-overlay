@@ -17,13 +17,15 @@ export function reduceGameState(prev, { lcu, live }, champIndex, now = Date.now)
     if (champ) next.championId = champ.id;
     else { next.championId = null; next.error = `unknown champion "${live.championRiotId}"`; }
     lineup = { held: next.championId, bench: [], allies: idsFromRiot(live.allies, champIndex), enemies: idsFromRiot(live.enemies, champIndex) };
-  } else if (lcu?.connected && lcu.phase === 'ChampSelect' && lcu.championId) {
+  } else if (lcu?.connected && lcu.phase === 'ChampSelect' && (lcu.championId || lcu.champSelect?.held || lcu.champSelect?.bench?.length)) {
+    // A lock, a hover, or an offered subset (opening pick) all count as champ select. championId
+    // stays the LOCKED champion; a hover only drives the lineup.
     next.phase = 'champselect';
-    next.championId = lcu.championId;
-    next.riotId = champIndex.byId(lcu.championId)?.riotId ?? null;
+    next.championId = lcu.championId ?? null;
+    next.riotId = lcu.championId ? champIndex.byId(lcu.championId)?.riotId ?? null : null;
     next.level = null; next.stage = null; next.gameMode = null;
     const cs = lcu.champSelect ?? {};
-    lineup = { held: lcu.championId, bench: cs.bench ?? [], allies: cs.allies ?? [], enemies: [] };
+    lineup = { held: lcu.championId ?? cs.held ?? null, bench: cs.bench ?? [], allies: cs.allies ?? [], enemies: [] };
   } else if (lcu?.connected && (lcu.phase === 'InProgress' || lcu.phase === 'Reconnect')) {
     next.phase = 'loading';
     next.level = null; next.stage = null;

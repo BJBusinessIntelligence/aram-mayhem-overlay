@@ -6,14 +6,27 @@ export function pickedChampion(cs) {
 
 const validId = (id) => Number.isInteger(id) && id > 0;
 
-// ARAM champ select: every ally already holds a champion; the bench lists swap options.
-export function extractChampSelect(cs) {
+// ARAM Mayhem champ select has two phases. Opening pick (timer BAN_PICK, nobody locked): the client
+// offers a subset of champions; hovers show as championPickIntent. Afterwards every ally holds a
+// champion and benchChampions lists swap options. `subset` is the team-builder subset list, when known.
+export function extractChampSelect(cs, subset = []) {
   const team = Array.isArray(cs?.myTeam) ? cs.myTeam : [];
   const me = team.find((p) => p && p.cellId === cs.localPlayerCellId);
-  const held = validId(me?.championId) ? me.championId : null;
-  const allies = team.filter((p) => p && p !== me && validId(p.championId)).map((p) => p.championId);
-  const bench = (Array.isArray(cs?.benchChampions) ? cs.benchChampions : []).map((b) => b?.championId).filter(validId);
-  return { held, bench, allies };
+  const chosen = (p) => (validId(p?.championId) ? p.championId : validId(p?.championPickIntent) ? p.championPickIntent : null);
+  const picking = cs?.timer?.phase === 'BAN_PICK' && !validId(me?.championId);
+  const held = chosen(me);
+  const allies = team.filter((p) => p && p !== me).map(chosen).filter((id) => id != null);
+  const bench = picking
+    ? (Array.isArray(subset) ? subset : []).filter((id) => validId(id) && id !== held)
+    : (Array.isArray(cs?.benchChampions) ? cs.benchChampions : []).map((b) => b?.championId).filter(validId);
+  return { held, bench, allies, picking };
+}
+
+// The team-builder route answers with an array or { subsetChampionIds } during the opening pick,
+// and 404 ("no available pickable subset champion data") otherwise.
+export function subsetIds(body) {
+  const list = Array.isArray(body) ? body : Array.isArray(body?.subsetChampionIds) ? body.subsetChampionIds : [];
+  return list.filter(validId);
 }
 
 export function createLcuClient({ readLockfile, getJson, timeoutMs = 1500 }) {
@@ -48,8 +61,11 @@ export function createLcuClient({ readLockfile, getJson, timeoutMs = 1500 }) {
           try {
             const cs = await request(lock, '/lol-champ-select/v1/session');
             championId = pickedChampion(cs);
-            champSelect = extractChampSelect(cs);
-          } catch { /* not picked yet */ }
+            let subset = [];
+            try { subset = subsetIds(await request(lock, '/lol-lobby-team-builder/champ-select/v1/subset-champion-list')); }
+            catch { /* only served during the opening pick */ }
+            champSelect = extractChampSelect(cs, subset);
+          } catch { /* session not available */ }
         }
         return { connected: true, phase, queueId, championId, champSelect };
       } catch {

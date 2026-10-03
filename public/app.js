@@ -118,8 +118,9 @@ function renderRecommend(r, g) {
   el.hidden = !show;
   if (!show) return;
   const top = r.candidates[0];
-  $('#rec-title').textContent = recPreview ? 'Lineup preview' : 'Champ select';
-  $('#rec-meta').textContent = `${r.team.knownAllies}/4 allies known${top ? ` · confidence ${top.confidence}` : ''}${recPreview ? ' · Preview' : ''}`;
+  const picking = !recPreview && !g.championId; // opening pick: nothing locked yet, candidates are the offered subset
+  $('#rec-title').textContent = recPreview ? 'Lineup preview' : picking ? 'Pick phase' : 'Champ select';
+  $('#rec-meta').textContent = `${r.team.knownAllies}/4 allies ${picking ? 'hovering' : 'known'}${top ? ` · confidence ${top.confidence}` : ''}${recPreview ? ' · Preview' : ''}`;
   const cov = r.team.coverage ?? {};
   const ad = Math.round((r.team.physicalShare ?? 0.5) * 100);
   $('#rec-team').innerHTML = Object.entries(TRAIT_NAMES).map(([k, label]) => `<span class="trait ${(cov[k] ?? 0) >= COVERAGE_OK ? 'ok' : 'miss'}">${label} ${(cov[k] ?? 0) >= COVERAGE_OK ? '✓' : '✗'}</span>`).join('')
