@@ -1,0 +1,87 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createImporter } from '../../src/import/importer.js';
+import { normalizeAramkit } from '../../src/data/aramkit/normalize.js';
+import { fixture, aramkitResources } from '../helpers/fixtures.js';
+
+const yasuo = normalizeAramkit(fixture('aramkit', 'champion-details-157-all.json'), aramkitResources(), { version: '16.19', bracket: 'all', fetchedAt: 0 });
+const champ = (id, name) => ({ ...yasuo, champion: { ...yasuo.champion, id, name } });
+
+function setup({ phase = 'champselect', held = 157, enemies = [], enabled = true, spellsOk = true, setOk = true, failChamp = false } = {}) {
+  const st = { game: { phase, championId: null, lineup: { held, bench: [], allies: [], enemies } }, view: { stage: 'auto', bracket: 'all' }, context: null, statuses: [] };
+  const state = { getGame: () => st.game, getView: () => st.view, getBuildContext: () => st.context, setImportStatus: (p) => st.statuses.push(p) };
+  const writes = [];
+  const writer = {
+    setSpells: async (ids) => { writes.push(['spells', ids]); return spellsOk ? { ok: true, status: 204 } : { ok: false, status: 400, error: 'HTTP 400' }; },
+    upsertItemSet: async (s) => { writes.push(['set', s.title, s.blocks.map((b) => b.type)]); return setOk ? { ok: true, status: 201 } : { ok: false, status: 500, error: 'HTTP 500' }; },
+  };
+  const repository = { getChamp: async (id) => { if (failChamp) throw new Error('all sources down'); return { data: champ(id, id === 157 ? 'Yasuo' : `#${id}`), stale: false, source: 'aramkit' }; } };
+  const timers = [];
+  const logs = [];
+  const imp = createImporter({ state, repository, writer, setTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimer: () => {}, now: () => 1234, log: (m) => logs.push(m) });
+  imp.setEnabled(enabled);
+  return { imp, st, writes, timers, logs };
+}
+
+test('champ select: first tick writes spells then the item set; unchanged snapshot writes nothing more', async () => {
+  const { imp, writes, st, logs } = setup();
+  await imp.tick();
+  assert.deepEqual(writes, [['spells', [4, 32]], ['set', 'AMO · Yasuo', ['Start', 'Boots', 'Core (in order)', 'Later']]]);
+  await imp.tick();
+  assert.equal(writes.length, 2);
+  const last = st.statuses.at(-1);
+  assert.equal(last.lastChampion, 'Yasuo'); assert.equal(last.lastSpells, 'Flash + Mark'); assert.equal(last.lastItemSetAt, 1234); assert.equal(last.lastError, null);
+  assert.ok(logs.some((m) => /\[import\] spells Flash \+ Mark for Yasuo/.test(m)));
+  assert.ok(logs.some((m) => /\[import\] item set AMO · Yasuo \(4 blocks\)/.test(m)));
+});
+
+test('held change (hover or swap) re-imports; in game only the item set is written, with the situational block', async () => {
+  const { imp, writes, st } = setup();
+  await imp.tick();
+  st.game = { ...st.game, lineup: { ...st.game.lineup, held: 99 } };
+  await imp.tick();
+  assert.deepEqual(writes.slice(2).map((w) => w[0]), ['spells', 'set']);
+  st.game = { ...st.game, phase: 'ingame', championId: 99, lineup: { held: 99, bench: [], allies: [1, 2, 3, 4], enemies: [5, 6, 7, 8, 9] } };
+  st.context = { allies: [], enemies: [], itemCategories: {} };
+  await imp.tick();
+  const w = writes.at(-1);
+  assert.equal(w[0], 'set');
+  assert.equal(writes.filter((x) => x[0] === 'spells').length, 2, 'no spell write in game');
+  await imp.tick();
+  assert.equal(writes.length, 5);
+});
+
+test('idle when disabled, out of phase, or without a held champion', async () => {
+  const off = setup({ enabled: false }); await off.imp.tick(); assert.equal(off.writes.length, 0);
+  const none = setup({ phase: 'none' }); await none.imp.tick(); assert.equal(none.writes.length, 0);
+  const loading = setup({ phase: 'loading' }); await loading.imp.tick(); assert.equal(loading.writes.length, 0);
+  const noHeld = setup({ held: null }); await noHeld.imp.tick(); assert.equal(noHeld.writes.length, 0);
+});
+
+test('a failed write reports the error and retries on the next tick; success clears it', async () => {
+  const { imp, writes, st } = setup({ spellsOk: false });
+  await imp.tick();
+  assert.equal(st.statuses.at(-1).lastError, 'spells: HTTP 400');
+  await imp.tick();
+  assert.equal(writes.filter((w) => w[0] === 'spells').length, 2, 'retried because the fingerprint was not remembered');
+});
+
+test('champion data failure is reported, never thrown', async () => {
+  const { imp, st, writes } = setup({ failChamp: true });
+  await imp.tick();
+  assert.equal(writes.length, 0);
+  assert.match(st.statuses.at(-1).lastError, /all sources down/);
+});
+
+test('disable then re-enable re-imports the same lineup; start/stop manage the timer and running flag', async () => {
+  const { imp, writes, timers, st } = setup();
+  await imp.tick();
+  imp.setEnabled(false); imp.setEnabled(true);
+  await imp.tick();
+  assert.equal(writes.length, 4);
+  imp.start();
+  assert.equal(timers.length, 1); assert.equal(timers[0].ms, 1000);
+  assert.equal(st.statuses.at(-1).running, true);
+  imp.stop();
+  assert.equal(st.statuses.at(-1).running, false);
+});
