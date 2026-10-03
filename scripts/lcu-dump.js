@@ -19,6 +19,7 @@ const ENDPOINTS = [
   ['phase', '/lol-gameflow/v1/gameflow-phase'],
   ['gameflow', '/lol-gameflow/v1/session'],
   ['champSelect', '/lol-champ-select/v1/session'],
+  ['subset', '/lol-lobby-team-builder/champ-select/v1/subset-champion-list'],
   ['pickable', '/lol-champ-select/v1/pickable-champion-ids'],
   ['currentChampion', '/lol-champ-select/v1/current-champion'],
   ['teamBuilderPickable', '/lol-lobby-team-builder/champ-select/v1/pickable-champion-ids'],
@@ -33,14 +34,14 @@ async function snapshot() {
 function key(s) {
   const cs = s.champSelect?.body ?? {};
   return JSON.stringify([s.phase?.body, cs.timer?.phase, (cs.myTeam ?? []).map((p) => [p.cellId, p.championId, p.championPickIntent]),
-    (cs.benchChampions ?? []).map((b) => b.championId), s.pickable?.body]);
+    (cs.benchChampions ?? []).map((b) => b.championId), s.pickable?.body, s.subset?.body]);
 }
 async function save(s, tag) {
   await fs.mkdir(path.join('data', 'debug'), { recursive: true });
   const file = path.join('data', 'debug', `lcu-champ-select-${Date.now()}${tag}.json`);
   await fs.writeFile(file, JSON.stringify(s, null, 2));
   const cs = s.champSelect?.body ?? {};
-  console.log('wrote', file, 'phase', s.phase?.body, 'timer', cs.timer?.phase ?? '-', 'pickable', Array.isArray(s.pickable?.body) ? s.pickable.body.length : s.pickable?.status);
+  console.log('wrote', file, 'phase', s.phase?.body, 'timer', cs.timer?.phase ?? '-', 'subset', JSON.stringify(s.subset?.body).slice(0, 80));
 }
 
 if (args.watch !== 'true') { await save(await snapshot(), ''); process.exit(0); }
