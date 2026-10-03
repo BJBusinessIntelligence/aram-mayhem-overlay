@@ -2,7 +2,7 @@
 // summoner spells (champ select only) and one item set per champion (merged into the user's list).
 export function mergeItemSets(existing, itemSet) {
   const list = Array.isArray(existing) ? existing.slice() : [];
-  const i = list.findIndex((s) => s && (s.title === itemSet.title || (s.uid && s.uid === itemSet.uid)));
+  const i = list.findIndex((s) => s && ((itemSet.title && s.title === itemSet.title) || (itemSet.uid && s.uid === itemSet.uid)));
   if (i === -1) list.push(itemSet); else list[i] = itemSet;
   return list;
 }
@@ -38,14 +38,14 @@ export function createLcuWriter({ readLockfile, getJson, sendJson, now = Date.no
   return {
     async summoner() {
       try { const s = await session(); if (!s) return fail(0, 'client not running'); return { ok: true, status: 200, ...(await summoner(s)) }; }
-      catch (e) { return fail(0, e.message); }
+      catch (e) { return fail(0, String(e?.message ?? e)); }
     },
     async setSpells(ids) {
       try {
         const s = await session(); if (!s) return fail(0, 'client not running');
         const r = await s.send('PATCH', '/lol-champ-select/v1/session/my-selection', { spell1Id: ids[0], spell2Id: ids[1] });
         return ok2xx(r.status) ? { ok: true, status: r.status } : fail(r.status, `HTTP ${r.status}`);
-      } catch (e) { return fail(0, e.message); }
+      } catch (e) { return fail(0, String(e?.message ?? e)); }
     },
     async upsertItemSet(itemSet) {
       try {
@@ -53,12 +53,12 @@ export function createLcuWriter({ readLockfile, getJson, sendJson, now = Date.no
         const { summonerId } = await summoner(s);
         const path = `/lol-item-sets/v1/item-sets/${summonerId}/sets`;
         const got = await s.get(path);
-        if (got.status !== 200 || !got.body || typeof got.body !== 'object') return fail(got.status, `item sets GET failed: HTTP ${got.status}`);
+        if (got.status !== 200 || !got.body || typeof got.body !== 'object' || Array.isArray(got.body)) return fail(got.status, `item sets GET failed: HTTP ${got.status}`);
         const body = { ...got.body, itemSets: mergeItemSets(got.body.itemSets, itemSet), timestamp: now() };
         if (debugDump) { try { await debugDump({ get: got.body, put: body }); } catch (e) { log(`[import] debug dump failed: ${e.message}`); } }
         const put = await s.send('PUT', path, body);
         return ok2xx(put.status) ? { ok: true, status: put.status } : fail(put.status, `item sets PUT failed: HTTP ${put.status}`);
-      } catch (e) { return fail(0, e.message); }
+      } catch (e) { return fail(0, String(e?.message ?? e)); }
     },
   };
 }

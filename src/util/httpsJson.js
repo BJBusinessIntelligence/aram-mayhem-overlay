@@ -3,8 +3,11 @@ import https from 'node:https';
 
 function request(url, { method, payload, headers = {}, timeoutMs = 1500, rejectUnauthorized = false }) {
   const mod = url.startsWith('http:') ? http : https;
+  // Fixed-length body: without content-length, Node sends Transfer-Encoding: chunked,
+  // which some servers (the League client's) reject.
+  const reqHeaders = payload == null ? headers : { ...headers, 'content-length': Buffer.byteLength(payload) };
   return new Promise((resolve, reject) => {
-    const req = mod.request(url, { method, headers, rejectUnauthorized, timeout: timeoutMs }, (res) => {
+    const req = mod.request(url, { method, headers: reqHeaders, rejectUnauthorized, timeout: timeoutMs }, (res) => {
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => {

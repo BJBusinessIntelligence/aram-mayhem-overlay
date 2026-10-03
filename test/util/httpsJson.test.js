@@ -8,7 +8,7 @@ const server = http.createServer((req, res) => {
   else if (req.url === '/text') { res.writeHead(200); res.end('"InProgress"'); }
   else if (req.url === '/empty') { res.writeHead(204); res.end(); }
   else if (req.url === '/slow') { setTimeout(() => { res.writeHead(200); res.end('{}'); }, 300); }
-  else if (req.url === '/echo') { const chunks = []; req.on('data', (c) => chunks.push(c)); req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ method: req.method, type: req.headers['content-type'], body: JSON.parse(Buffer.concat(chunks).toString() || 'null') })); }); }
+  else if (req.url === '/echo') { const chunks = []; req.on('data', (c) => chunks.push(c)); req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ method: req.method, type: req.headers['content-type'], cl: req.headers['content-length'] ?? null, te: req.headers['transfer-encoding'] ?? null, body: JSON.parse(Buffer.concat(chunks).toString() || 'null') })); }); }
   else { res.writeHead(404); res.end('nope'); }
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -40,9 +40,10 @@ test('connection refused rejects', async () => {
 });
 
 test('httpsSendJson sends the method and a JSON body', async () => {
-  const r = await httpsSendJson(`${base}/echo`, { method: 'PATCH', body: { spell1Id: 4, spell2Id: 32 }, headers: { authorization: 'Basic abc' } });
+  const body = { spell1Id: 4, spell2Id: 32 };
+  const r = await httpsSendJson(`${base}/echo`, { method: 'PATCH', body, headers: { authorization: 'Basic abc' } });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { method: 'PATCH', type: 'application/json', body: { spell1Id: 4, spell2Id: 32 } });
+  assert.deepEqual(r.body, { method: 'PATCH', type: 'application/json', cl: String(Buffer.byteLength(JSON.stringify(body))), te: null, body });
   assert.equal((await httpsSendJson(`${base}/missing`, { method: 'PUT', body: {} })).status, 404);
   await assert.rejects(httpsSendJson(`${base}/slow`, { method: 'PUT', body: {}, timeoutMs: 50 }), /timeout/);
 });

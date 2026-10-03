@@ -32,6 +32,10 @@ test('mergeItemSets replaces the same-title or same-uid set, keeps others by ref
   assert.equal(merged[0], foreign); assert.equal(merged[2], other); assert.equal(merged[1], fresh);
   assert.equal(mergeItemSets([foreign], fresh).length, 2);
   assert.equal(mergeItemSets([{ ...old, title: 'renamed', uid: 'amo-157' }], fresh)[0], fresh, 'uid match also replaces');
+  const untitled = { blocks: [] };
+  const appended = mergeItemSets([untitled, foreign], { uid: 'amo-1', blocks: [] });
+  assert.equal(appended.length, 3, 'an untitled incoming set must not match an untitled existing one');
+  assert.equal(appended[0], untitled);
 });
 
 test('setSpells PATCHes my-selection with auth and insecure tls', async () => {
@@ -78,4 +82,10 @@ test('failures: no lockfile, GET failure (no PUT), non-2xx PATCH/PUT → ok:fals
   assert.equal((await w2.upsertItemSet(amo(1, 'Annie'))).status, 500);
   const thrower = createLcuWriter({ readLockfile: async () => lock, getJson: async () => { throw new Error('ECONNRESET'); }, sendJson: async () => { throw new Error('ECONNRESET'); } });
   assert.match((await thrower.setSpells([4, 32])).error, /ECONNRESET/);
+  const stringThrower = createLcuWriter({ readLockfile: async () => lock, getJson: fakeHttp().getJson, sendJson: async () => { throw 'boom'; } });
+  assert.equal((await stringThrower.setSpells([4, 32])).error, 'boom', 'non-Error throws are stringified, not read as .message');
+  const arrGet = fakeHttp({ sets: [] });
+  const w3 = createLcuWriter({ readLockfile: async () => lock, getJson: arrGet.getJson, sendJson: arrGet.sendJson });
+  assert.equal((await w3.upsertItemSet(amo(1, 'Annie'))).ok, false, 'an array GET body is not a valid item-sets document');
+  assert.ok(!arrGet.calls.some((c) => c[0] === 'PUT'), 'never PUT after an array GET body');
 });
