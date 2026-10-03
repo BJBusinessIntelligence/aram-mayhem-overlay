@@ -94,7 +94,7 @@ export function pickBuild(champData, { minPick = 0.05, context = null, weights =
     primary: {
       key: primary.key, name: primary.name, winRate: primary.winRate, pickRate: primary.pickRate, games: primary.games,
       starter: primary.starters[0]?.items ?? [], boots: primary.boots[0]?.item ?? null, core: primary.core, later: primary.later.map((l) => l.item),
-      spells: spells?.names ?? [], skillOrder: skill?.order ?? null, routeWinRate: primary.routeWinRate, routeGames: primary.routeGames,
+      spells: spells?.names ?? [], spellIds: spells?.spellIds ?? [], skillOrder: skill?.order ?? null, routeWinRate: primary.routeWinRate, routeGames: primary.routeGames,
       contextDelta, contextReason,
     },
     alternatives: archetypes.filter((a) => a !== primary).map((a) => ({ key: a.key, name: a.name, winRate: a.winRate, pickRate: a.pickRate, games: a.games })),

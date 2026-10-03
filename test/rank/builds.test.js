@@ -111,3 +111,11 @@ test('both teams: situational items ranked by threat-matching categories, core e
   const h = pickBuild(d, { context: { allies: squishy(), enemies: healing, itemCategories } });
   assert.ok(h.situational.some((s) => s.item.id === 3075 && /anti-heal/.test(s.reason)));
 });
+
+test('primary carries the chosen summoner spell ids next to their names', () => {
+  const b = pickBuild(real);
+  assert.deepEqual(b.primary.spellIds, [4, 32]);
+  assert.deepEqual(b.primary.spells, ['Flash', 'Mark']);
+  const none = pickBuild({ build: { archetypes: [arch({ key: 'a' })] }, summoners: [], skills: [] });
+  assert.deepEqual(none.primary.spellIds, []);
+});
