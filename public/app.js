@@ -46,9 +46,9 @@ async function tick() {
     // The OCR chip (`lastCaptureAt` etc.) changes every tick while in game; excluding it from the
     // render-skip key keeps the rest of the page (open <details>, text selection) stable between
     // real changes, while renderOcrChip below still updates on every poll.
-    const key = JSON.stringify({ ...payload, ocr: undefined });
+    const key = JSON.stringify({ ...payload, ocr: undefined, import: undefined });
     if (key !== lastRenderKey) { lastRenderKey = key; lastRendered = JSON.stringify(payload); render(payload, state); }
-    else renderOcrChip(payload.ocr);
+    else { renderOcrChip(payload.ocr); renderImportChip(payload.import); }
   } catch (e) {
     setBanner(`Server unreachable: ${e.message}`);
   }
@@ -93,6 +93,7 @@ function render(p, state) {
 
   renderRecommend(recPreview ? recPreview.recommend : p.recommend, p.game);
   renderOcrChip(p.ocr);
+  renderImportChip(p.import);
   const offer = p.offer;
   const showOffer = offer && dismissedOfferAt !== offer.detectedAt;
   $('#offer').hidden = !showOffer;
@@ -109,6 +110,17 @@ function renderOcrChip(o) {
   if (o.lastError) { el.textContent = `OCR: ${o.lastError}`; el.className = 'chip err'; return; }
   if (o.lastWarning) { el.textContent = 'OCR · HDR capture limited'; el.className = 'chip err'; return; }
   el.textContent = o.running ? `OCR on${o.hdr === true ? ' · HDR' : ''}${o.lastCaptureMs != null ? ` · ${o.lastCaptureMs} ms` : ''}` : 'OCR idle';
+  el.className = 'chip on';
+}
+
+function renderImportChip(i) {
+  const el = $('#import-chip');
+  if (!i) { el.hidden = true; return; }
+  el.hidden = false;
+  el.style.cursor = 'pointer';
+  if (!i.enabled) { el.textContent = 'Import off'; el.className = 'chip'; return; }
+  if (i.lastError) { el.textContent = `Import: ${i.lastError}`; el.className = 'chip err'; return; }
+  el.textContent = `Import on${i.lastChampion ? ` · ${i.lastChampion}` : ''}${i.lastSpells ? ` · ${i.lastSpells}` : ''}`;
   el.className = 'chip on';
 }
 
@@ -221,6 +233,11 @@ $('#refresh-btn').addEventListener('click', async () => {
   lastRendered = ''; lastRenderKey = ''; tick();
 });
 $('#live-btn').addEventListener('click', () => { preview = null; lastRendered = ''; lastRenderKey = ''; tick(); });
+$('#import-chip').addEventListener('click', async () => {
+  const cur = JSON.parse(lastRendered || '{}').import;
+  try { await api('/api/import', { method: 'POST', body: JSON.stringify({ enabled: !(cur && cur.enabled) }) }); lastRendered = ''; lastRenderKey = ''; tick(); }
+  catch (e) { setBanner(e.message); }
+});
 $('#capture-btn').addEventListener('click', async () => {
   try {
     const r = await api('/api/ocr/capture?save=1', { method: 'POST' });
