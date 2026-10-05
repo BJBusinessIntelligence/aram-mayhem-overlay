@@ -39,12 +39,12 @@ function setup({ phase = 'champselect', queueId = 2400, held = 157, enemies = []
 test('champ select: first tick writes spells then the item set; unchanged snapshot writes nothing more', async () => {
   const { imp, writes, st, logs } = setup();
   await imp.tick();
-  assert.deepEqual(writes, [['spells', [4, 32]], ['set', 'AMO · Yasuo', ['Start', 'Boots', 'Core (in order)', 'Later']]]);
+  assert.deepEqual(writes, [['spells', [32, 4]], ['set', 'AMO · Yasuo', ['Start', 'Boots', 'Core (in order)', 'Later']]]);
   await imp.tick();
   assert.equal(writes.length, 2);
   const last = st.statuses.at(-1);
-  assert.equal(last.lastChampion, 'Yasuo'); assert.equal(last.lastSpells, 'Flash + Mark'); assert.equal(last.lastItemSetAt, 1234); assert.equal(last.lastError, null);
-  assert.ok(logs.some((m) => /\[import\] spells Flash \+ Mark for Yasuo/.test(m)));
+  assert.equal(last.lastChampion, 'Yasuo'); assert.equal(last.lastSpells, 'Mark + Flash'); assert.equal(last.lastItemSetAt, 1234); assert.equal(last.lastError, null);
+  assert.ok(logs.some((m) => /\[import\] spells Mark \+ Flash for Yasuo/.test(m)));
   assert.ok(logs.some((m) => /\[import\] item set AMO · Yasuo \(4 blocks\)/.test(m)));
 });
 

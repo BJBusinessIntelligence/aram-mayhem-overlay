@@ -15,7 +15,9 @@ export function planImport({ champ, build, enemies = 0 }) {
   const p = build?.primary;
   if (!champ || !p) return { spells: null, itemSet: null };
   const spells = Array.isArray(p.spellIds) && p.spellIds.length === 2 && p.spellIds.every(validId)
-    ? { ids: p.spellIds.slice(), names: Array.isArray(p.spells) ? p.spells.slice() : [] }
+    // Reversed on purpose: aramkit lists Flash first; the user wants Flash on F (spell2) and the
+    // other spell on D (spell1).
+    ? { ids: p.spellIds.slice().reverse(), names: Array.isArray(p.spells) ? p.spells.slice().reverse() : [] }
     : null;
   const blocks = [
     block('Start', [...(p.starter ?? []), { id: HEALTH_POTION }]),

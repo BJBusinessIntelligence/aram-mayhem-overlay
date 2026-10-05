@@ -11,7 +11,7 @@ const ids = (block) => block.items.map((i) => i.id);
 
 test('plans spells and an AMO item set from the real Yasuo build', () => {
   const p = planImport({ champ: data.champion, build });
-  assert.deepEqual(p.spells, { ids: [4, 32], names: ['Flash', 'Mark'] });
+  assert.deepEqual(p.spells, { ids: [32, 4], names: ['Mark', 'Flash'] }); // reversed: second-best-pick spell on D, Flash on F
   const s = p.itemSet;
   assert.equal(s.title, `${AMO_PREFIX}Yasuo`);
   assert.equal(s.uid, 'amo-157');
