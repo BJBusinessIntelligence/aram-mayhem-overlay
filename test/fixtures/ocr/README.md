@@ -1,6 +1,6 @@
 # OCR regression evidence
 
-Captured from Boyd's games at 3440 x 1440:
+Captured from the author's games at 3440 x 1440:
 
 - `quest-title.json`: capture from `offer-1790736431849.json`. All three titles were
   read correctly; `Quest: Steel Your Heart` failed catalogue matching (ID 1152).

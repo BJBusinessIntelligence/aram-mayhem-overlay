@@ -2,7 +2,7 @@
 
 Date: 2026-09-25
 Status: draft for review
-Owner: Boyd
+Owner: project maintainer
 
 ## 1. Goal
 

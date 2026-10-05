@@ -2602,10 +2602,10 @@ git commit -m "feat: lcu lockfile parsing"
 
 ```json
 {
-  "activePlayer": { "riotId": "Boyd#NA1", "riotIdGameName": "Boyd", "riotIdTagLine": "NA1", "summonerName": "Boyd", "level": 7, "currentGold": 1234.5 },
+  "activePlayer": { "riotId": "Player#NA1", "riotIdGameName": "Player", "riotIdTagLine": "NA1", "summonerName": "Player", "level": 7, "currentGold": 1234.5 },
   "allPlayers": [
     { "riotId": "Other#NA1", "summonerName": "Other", "championName": "Annie", "rawChampionName": "game_character_displayname_Annie", "team": "ORDER", "level": 6 },
-    { "riotId": "Boyd#NA1", "summonerName": "Boyd", "championName": "Wukong", "rawChampionName": "game_character_displayname_MonkeyKing", "team": "ORDER", "level": 7 }
+    { "riotId": "Player#NA1", "summonerName": "Player", "championName": "Wukong", "rawChampionName": "game_character_displayname_MonkeyKing", "team": "ORDER", "level": 7 }
   ],
   "gameData": { "gameMode": "ARAM", "gameTime": 412.7, "mapName": "Map12", "mapNumber": 12, "mapTerrain": "Default" }
 }
